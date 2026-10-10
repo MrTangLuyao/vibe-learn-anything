@@ -1,0 +1,210 @@
+
+/* Range: U+0000-00FF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_0.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF;
+}
+
+/* Range: U+0100-024F */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_1.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-024F;
+}
+
+/* Range: U+2000-206F */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_2.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+2000-206F;
+}
+
+/* Range: U+3000-303F */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_3.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+3000-303F;
+}
+
+/* Range: U+4E00-52FF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_4.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+4E00-52FF;
+}
+
+/* Range: U+5300-57FF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_5.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+5300-57FF;
+}
+
+/* Range: U+5800-5CFF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_6.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+5800-5CFF;
+}
+
+/* Range: U+5D00-61FF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_7.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+5D00-61FF;
+}
+
+/* Range: U+6200-66FF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_8.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+6200-66FF;
+}
+
+/* Range: U+6700-6BFF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_9.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+6700-6BFF;
+}
+
+/* Range: U+6C00-70FF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_10.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+6C00-70FF;
+}
+
+/* Range: U+7100-75FF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_11.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+7100-75FF;
+}
+
+/* Range: U+7600-7AFF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_12.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+7600-7AFF;
+}
+
+/* Range: U+7B00-7FFF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_13.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+7B00-7FFF;
+}
+
+/* Range: U+8000-84FF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_14.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+8000-84FF;
+}
+
+/* Range: U+8500-89FF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_15.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+8500-89FF;
+}
+
+/* Range: U+8A00-8EFF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_16.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+8A00-8EFF;
+}
+
+/* Range: U+8F00-93FF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_17.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+8F00-93FF;
+}
+
+/* Range: U+9400-98FF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_18.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+9400-98FF;
+}
+
+/* Range: U+9900-9FFF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_19.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+9900-9FFF;
+}
+
+/* Range: U+F900-FAFF */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts_chunks/chunk_20.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+F900-FAFF;
+}

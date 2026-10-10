@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" font-family="JetBrains Mono, Consolas, monospace">
+  <rect width="640" height="200" rx="16" fill="#2a2a29"/>
+  <g font-size="18" text-anchor="middle">
+    <g fill="#333332" stroke="#4a4a49">
+      <rect x="40" y="70" width="60" height="50" rx="8"/>
+      <rect x="110" y="70" width="60" height="50" rx="8"/>
+      <rect x="180" y="70" width="60" height="50" rx="8"/>
+      <rect x="250" y="70" width="60" height="50" rx="8"/>
+      <rect x="320" y="70" width="60" height="50" rx="8" fill="#d97757" stroke="#ffb49d"/>
+      <rect x="390" y="70" width="60" height="50" rx="8"/>
+      <rect x="460" y="70" width="60" height="50" rx="8"/>
+      <rect x="530" y="70" width="60" height="50" rx="8"/>
+    </g>
+    <g fill="#e8e8e8">
+      <text x="70" y="102">2</text><text x="140" y="102">5</text><text x="210" y="102">8</text><text x="280" y="102">12</text>
+      <text x="350" y="102" fill="#ffffff" font-weight="700">16</text>
+      <text x="420" y="102">23</text><text x="490" y="102">38</text><text x="560" y="102">56</text>
+    </g>
+    <g fill="#a1a1a0" font-size="13">
+      <text x="70" y="145">lo</text><text x="350" y="145" fill="#ffb49d">mid</text><text x="560" y="145">hi</text>
+    </g>
+    <text x="320" y="45" fill="#e8e8e8" font-size="15">target = 23 ⟶ a[mid] = 16 &lt; 23, keep the right half</text>
+    <text x="320" y="180" fill="#6dc198" font-size="13">→ lo = mid + 1</text>
+  </g>
+</svg>

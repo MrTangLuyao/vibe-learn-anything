@@ -1,0 +1,86 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Length 632 >>
+stream
+BT /F2 26 Tf 60 720 Td (Binary Search) Tj ET
+0.85 0.47 0.34 RG 4 w 60 700 m 200 700 l S
+BT /F1 14 Tf 60 660 Td (Goal: find a value in a SORTED array.) Tj ET
+BT /F1 14 Tf 60 636 Td (Idea: compare with the middle element,) Tj ET
+BT /F1 14 Tf 60 612 Td (then throw away half of the array.) Tj ET
+BT /F1 14 Tf 60 588 Td () Tj ET
+BT /F1 14 Tf 60 564 Td (Each step halves the search space,) Tj ET
+BT /F1 14 Tf 60 540 Td (so it needs about log2\(n\) steps.) Tj ET
+BT /F1 14 Tf 60 516 Td () Tj ET
+BT /F1 14 Tf 60 492 Td (n = 1,000,000  ->  about 20 comparisons.) Tj ET
+BT /F1 10 Tf 60 40 Td (Vibe Learn Anything - sample PDF - page 1) Tj ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Length 559 >>
+stream
+BT /F2 26 Tf 60 720 Td (The algorithm) Tj ET
+0.85 0.47 0.34 RG 4 w 60 700 m 200 700 l S
+BT /F1 14 Tf 60 660 Td (lo = 0, hi = n - 1) Tj ET
+BT /F1 14 Tf 60 636 Td (while lo <= hi:) Tj ET
+BT /F1 14 Tf 60 612 Td (    mid = \(lo + hi\) / 2) Tj ET
+BT /F1 14 Tf 60 588 Td (    if a[mid] == x: return mid) Tj ET
+BT /F1 14 Tf 60 564 Td (    if a[mid] < x:  lo = mid + 1) Tj ET
+BT /F1 14 Tf 60 540 Td (    else:           hi = mid - 1) Tj ET
+BT /F1 14 Tf 60 516 Td (return -1  \(not found\)) Tj ET
+BT /F1 10 Tf 60 40 Td (Vibe Learn Anything - sample PDF - page 2) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 635 >>
+stream
+BT /F2 26 Tf 60 720 Td (Common bugs) Tj ET
+0.85 0.47 0.34 RG 4 w 60 700 m 200 700 l S
+BT /F1 14 Tf 60 660 Td (1. Forgetting that the array must be sorted.) Tj ET
+BT /F1 14 Tf 60 636 Td (2. Using lo < hi and missing the last element.) Tj ET
+BT /F1 14 Tf 60 612 Td (3. Infinite loops: lo = mid instead of mid + 1.) Tj ET
+BT /F1 14 Tf 60 588 Td (4. Overflow: \(lo + hi\) / 2 in fixed-size ints;) Tj ET
+BT /F1 14 Tf 60 564 Td (   prefer lo + \(hi - lo\) / 2.) Tj ET
+BT /F1 14 Tf 60 540 Td () Tj ET
+BT /F1 14 Tf 60 516 Td (Try highlighting this text in the app!) Tj ET
+BT /F1 10 Tf 60 40 Td (Vibe Learn Anything - sample PDF - page 3) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 9 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R] /Count 3 >>
+endobj
+10 0 obj
+<< /Type /Catalog /Pages 9 0 R >>
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000000154 00000 n 
+0000000837 00000 n 
+0000000973 00000 n 
+0000001583 00000 n 
+0000001719 00000 n 
+0000002405 00000 n 
+0000002541 00000 n 
+0000002610 00000 n 
+trailer
+<< /Size 11 /Root 10 0 R >>
+startxref
+2660
+%%EOF

@@ -1,0 +1,109 @@
+{
+  "name": "vibe-learn-anything",
+  "productName": "Vibe Learn Anything",
+  "version": "0.1.0",
+  "description": "Learn anything with AI-generated interactive courses (.vla / .vitent).",
+  "type": "module",
+  "main": "src/main/main.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MrTangLuyao/vibe-learn-anything.git"
+  },
+  "homepage": "https://github.com/MrTangLuyao/vibe-learn-anything",
+  "author": "louie",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "watch": "node tools/build.mjs --watch",
+    "start": "node tools/build.mjs && electron .",
+    "dev": "node tools/build.mjs && electron . --dev",
+    "examples": "node tools/vla.mjs pack examples/vla-tour -o examples/vla-tour.vla",
+    "vla": "node tools/vla.mjs",
+    "test": "node --test test/*.test.mjs",
+    "e2e": "node tools/build.mjs && node test/drive.mjs test/e2e-tour.mjs --trust vla-tour",
+    "dist": "node tools/build.mjs --prod && npm run examples && electron-builder --win --x64",
+    "media": "node tools/build.mjs && node tools/record-media.mjs",
+    "e2e:ai": "node tools/build.mjs && node test/drive.mjs test/e2e-ai.mjs --trust vla-tour"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "js-yaml": "^4.1.0"
+  },
+  "optionalDependencies": {
+    "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "dompurify": "^3.4.16",
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "gifenc": "^1.0.3",
+    "highlight.js": "^11.12.0",
+    "katex": "^0.19.0",
+    "lucide": "^1.55.0",
+    "mammoth": "^1.13.0",
+    "markdown-it": "^15.0.2",
+    "mermaid": "^12.1.0",
+    "monaco-editor": "^0.57.0",
+    "pdfjs-dist": "^6.4.299",
+    "playwright-core": "^1.64.0",
+    "sortablejs": "^1.15.7"
+  },
+  "build": {
+    "appId": "com.louie.vibelearnanything",
+    "productName": "Vibe Learn Anything",
+    "files": [
+      "src/main/**",
+      "src/shared/**",
+      "dist/**",
+      "package.json",
+      "!dist/**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "examples",
+        "to": "examples",
+        "filter": [
+          "*.vla"
+        ]
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "vla",
+        "name": "Vibe Learn Course",
+        "description": "Vibe Learn Anything course"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "asarUnpack": [
+      "node_modules/node-pty/**",
+      "dist/kit/**"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "npmRebuild": false
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "node-pty": false,
+    "electron-winstaller": false
+  }
+}

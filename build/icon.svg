@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2c2c2a"/>
+      <stop offset="1" stop-color="#191918"/>
+    </linearGradient>
+    <linearGradient id="dot" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d97757"/>
+      <stop offset="1" stop-color="#ffb49d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.72" cy="0.7" r="0.42">
+      <stop offset="0" stop-color="#d97757" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#d97757" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#bg)"/>
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#glow)"/>
+  <rect x="33.5" y="33.5" width="957" height="957" rx="214.5" fill="none" stroke="#ffffff" stroke-opacity="0.07" stroke-width="3"/>
+  <!-- an open book whose spine is a "v" -->
+  <path d="M232 318 C 318 288 410 296 476 344 L 512 690 L 476 690 C 412 652 330 640 232 664 Z" fill="#e8e8e8" opacity="0.95"/>
+  <path d="M792 318 C 706 288 614 296 548 344 L 512 690 L 548 690 C 612 652 694 640 792 664 Z" fill="#e8e8e8" opacity="0.78"/>
+  <path d="M476 344 L 512 690 L 548 344" fill="none" stroke="#1f1f1e" stroke-width="18" stroke-linejoin="round"/>
+  <circle cx="712" cy="756" r="70" fill="url(#dot)"/>
+</svg>

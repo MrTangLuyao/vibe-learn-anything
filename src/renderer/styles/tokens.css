@@ -1,0 +1,157 @@
+/* ============================================================
+ * Design tokens — the louie. palette (homepage lib/design/louie.css):
+ * warm charcoal + coral in dark, cream + copper in light.
+ * ============================================================ */
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/JetBrainsMono-Bold.woff2') format('woff2');
+  font-weight: 600 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-024F, U+2000-206F;
+}
+
+:root {
+  color-scheme: dark;
+  --bg-rgb: 31 31 30;
+  --surface-rgb: 42 42 41;
+  --surface-high-rgb: 51 51 50;
+  --border-rgb: 58 58 57;
+  --outline-rgb: 74 74 73;
+  --text-rgb: 232 232 232;
+  --muted-rgb: 161 161 160;
+  --accent-rgb: 217 119 87;
+  --accent-on-rgb: 255 180 157;
+
+  --bg: #1f1f1e;
+  --bg-deep: #191918;
+  --surface: #2a2a29;
+  --surface-high: #333332;
+  --surface-top: #3b3b3a;
+  --border: #3a3a39;
+  --outline: #4a4a49;
+  --text: #e8e8e8;
+  --muted: #a1a1a0;
+  --faint: #767675;
+  --accent: #d97757;
+  --accent-on: #ffb49d;
+  --accent-dim: rgba(217, 119, 87, 0.15);
+  --accent-ink: #ffffff;
+  --accent2: #c4b87a;
+  --nav-hover: rgba(255, 255, 255, 0.10);
+  --hover: rgba(255, 255, 255, 0.06);
+  --press: rgba(255, 255, 255, 0.10);
+  --brand-paint: linear-gradient(90deg, #d97757, #ffb49d);
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.22);
+  --shadow-2: 0 8px 20px rgba(0, 0, 0, 0.28);
+  --shadow-3: 0 24px 64px rgba(0, 0, 0, 0.5);
+  --scrim: rgba(0, 0, 0, 0.55);
+
+  --ok: #6dc198;
+  --ok-dim: rgba(109, 193, 152, 0.14);
+  --err: #e07c76;
+  --err-dim: rgba(224, 124, 118, 0.14);
+  --warn: #e0b35a;
+  --warn-dim: rgba(224, 179, 90, 0.14);
+  --info: #7fb0e6;
+  --info-dim: rgba(127, 176, 230, 0.14);
+  --violet: #a996ff;
+  --violet-dim: rgba(169, 150, 255, 0.16);
+
+  --hl-yellow: rgba(240, 200, 80, 0.34);
+  --hl-green: rgba(110, 200, 140, 0.30);
+  --hl-blue: rgba(110, 160, 240, 0.32);
+  --hl-pink: rgba(240, 120, 170, 0.30);
+  --hl-ask: rgba(169, 150, 255, 0.30);
+  --hl-revise: rgba(217, 119, 87, 0.32);
+  --hl-yellow-solid: #e8c454;
+  --hl-green-solid: #6dc198;
+  --hl-blue-solid: #78a6ef;
+  --hl-pink-solid: #ec7fae;
+  --hl-ask-solid: #a996ff;
+  --hl-revise-solid: #d97757;
+
+  --code-bg: #262625;
+  --kbd-bg: #333332;
+
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-full: 9999px;
+
+  --font: 'JetBrains Mono', 'HarmonyOS Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, 'Microsoft YaHei', monospace;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --appbar-h: 48px;
+  --lessonbar-h: 44px;
+  --overlay-w: 140px;
+}
+
+:root[data-platform="darwin"] { --overlay-w: 0px; }
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-rgb: 239 235 227;
+  --surface-rgb: 255 255 255;
+  --surface-high-rgb: 250 245 235;
+  --border-rgb: 204 194 178;
+  --outline-rgb: 139 122 95;
+  --text-rgb: 42 39 34;
+  --muted-rgb: 86 79 68;
+  --accent-rgb: 137 87 24;
+  --accent-on-rgb: 106 65 16;
+
+  --bg: #efebe3;
+  --bg-deep: #e7e0d4;
+  --surface: #ffffff;
+  --surface-high: #faf5eb;
+  --surface-top: #f3ecdf;
+  --border: #ccc2b2;
+  --outline: #8b7a5f;
+  --text: #2a2722;
+  --muted: #564f44;
+  --faint: #8a8172;
+  --accent: #895718;
+  --accent-on: #6a4110;
+  --accent-dim: rgba(202, 151, 61, 0.16);
+  --accent-ink: #ffffff;
+  --accent2: #8f7b2c;
+  --nav-hover: rgba(169, 112, 34, 0.10);
+  --hover: rgba(137, 87, 24, 0.06);
+  --press: rgba(137, 87, 24, 0.10);
+  --brand-paint: linear-gradient(90deg, #895718, #6a4110);
+  --shadow-1: 0 3px 10px rgba(53, 44, 29, 0.06);
+  --shadow-2: 0 4px 14px rgba(53, 44, 29, 0.12);
+  --shadow-3: 0 20px 56px rgba(42, 39, 34, 0.24);
+  --scrim: rgba(42, 39, 34, 0.35);
+
+  --ok: #2f7d55;
+  --ok-dim: rgba(47, 125, 85, 0.12);
+  --err: #b3443f;
+  --err-dim: rgba(179, 68, 63, 0.10);
+  --warn: #9a6a12;
+  --warn-dim: rgba(154, 106, 18, 0.12);
+  --info: #2f6aa3;
+  --info-dim: rgba(47, 106, 163, 0.10);
+  --violet: #6b55d6;
+  --violet-dim: rgba(107, 85, 214, 0.10);
+
+  --hl-yellow: rgba(242, 196, 60, 0.42);
+  --hl-green: rgba(90, 185, 120, 0.30);
+  --hl-blue: rgba(90, 140, 230, 0.26);
+  --hl-pink: rgba(230, 100, 160, 0.26);
+  --hl-ask: rgba(120, 95, 230, 0.22);
+  --hl-revise: rgba(200, 110, 60, 0.26);
+  --hl-yellow-solid: #c99a12;
+  --hl-green-solid: #3c9a62;
+  --hl-blue-solid: #3f72c8;
+  --hl-pink-solid: #c94b86;
+  --hl-ask-solid: #6b55d6;
+  --hl-revise-solid: #b4552d;
+
+  --code-bg: #f6f1e6;
+  --kbd-bg: #f3ecdf;
+}

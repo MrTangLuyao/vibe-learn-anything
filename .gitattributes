@@ -1,0 +1,16 @@
+* text=auto
+*.pdf binary
+*.vla binary
+*.vitent binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
+*.wav binary
+*.mp3 binary
+*.mp4 binary
+*.gif binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
