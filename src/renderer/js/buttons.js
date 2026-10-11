@@ -14,6 +14,7 @@ export function builtinButtons() {
     { id: 'focus', slot: 'lessonbar.left', icon: 'maximize-2', label: t('lb.focus'), style: 'icon', order: 10, action: { type: 'ui', command: 'focus' } },
     { id: 'prev', slot: 'lessonbar.left', icon: 'arrow-left', label: t('lb.prev'), style: 'text', order: 20, action: { type: 'ui', command: 'prev' } },
     { id: 'next', slot: 'lessonbar.left', icon: 'arrow-right', label: t('lb.next'), style: 'text', iconAfter: true, order: 30, action: { type: 'ui', command: 'next' } },
+    { id: 'ai', slot: 'lessonbar.right', icon: 'wand-sparkles', label: t('lb.aiEdit'), tooltip: t('lb.aiEditTip'), style: 'both', order: 70, action: { type: 'ui', command: 'ai-edit' } },
     { id: 'highlight', slot: 'lessonbar.right', icon: 'highlighter', label: t('lb.highlight'), style: 'both', order: 80, action: { type: 'ui', command: 'highlight' } },
     { id: 'edit', slot: 'lessonbar.right', icon: 'pencil-line', label: t('lb.edit'), style: 'icon', order: 90, action: { type: 'ui', command: 'edit' } },
     { id: 'sidebar', slot: 'topbar.right', icon: 'panel-left', label: t('lb.pages'), style: 'icon', order: 10, action: { type: 'ui', command: 'toggle-sidebar' } },

@@ -11,18 +11,27 @@
 import { spawn } from 'node:child_process';
 import * as settings from './settings.js';
 import { buildEnv } from './exec.js';
+import * as claude from './claude.js';
 
 const WIN = process.platform === 'win32';
 const controllers = new Map();
 const agents = new Map();
 
+/* Quick, synchronous view; claude is whatever was last probed (null = not yet). */
 export function status() {
   const s = settings.load().ai;
   return {
     http: !!(s.http.baseUrl && s.http.model),
     agent: !!s.agent.command,
     interactive: !!(s.agent.interactive || s.agent.command),
+    claude: claude.cachedStatus(),
+    prefer: s.prefer || 'auto',
   };
+}
+
+export async function fullStatus({ fresh = false } = {}) {
+  const c = await claude.status({ fresh });
+  return { ...status(), claude: c };
 }
 
 function endpoint(base) {
@@ -100,6 +109,7 @@ export async function chat(wc, { requestId, messages, temperature, maxTokens }) 
 }
 
 export function abort(requestId) {
+  claude.abort(requestId);
   controllers.get(requestId)?.abort();
   const a = agents.get(requestId);
   if (a) {

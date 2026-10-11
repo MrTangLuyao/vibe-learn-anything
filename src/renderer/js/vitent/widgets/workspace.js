@@ -12,6 +12,10 @@ import { fencesIn, yamlBody } from '../../../../shared/vitent-parse.mjs';
 import { runnerFor, langOfFile } from '../../../../shared/runners.mjs';
 import { loadMonaco, createEditor } from '../../lib/monaco.js';
 import { TermSession } from '../../lib/term.js';
+import { bus } from '../../core/store.js';
+import { setCodeContext, clearCodeContext, contextChanged } from '../../ai-context.js';
+
+const pageKey = src => String(src || '').replace(/\.vitent$/i, '').replace(/[/]+/g, '__').replace(/[^\w.-]+/g, '-');
 
 function filesFrom(nodes) {
   return nodes.filter(c => c.type === 'md').flatMap(c => fencesIn(c.text));
@@ -78,6 +82,7 @@ export const workspace = {
       h('div.ws-head', { 'data-vh-skip': '' },
         icon('code-xml'),
         h('div.ws-title', title, runner ? h('small', runner.label || runner.id) : null),
+        rctx.page.lesson?.askAI ? h('button.chip-btn.ws-ai', { 'data-tip': t('ws.ai.tip'), onClick: e => aiMenu(e.currentTarget) }, icon('sparkles'), h('span', 'AI')) : null,
         hints.length ? h('button.chip-btn', { onClick: () => showHints() }, icon('lightbulb'), h('span', t('ws.hint'))) : null,
         solutionFiles.length ? h('button.chip-btn', { onClick: () => showSolution() }, icon('key-round'), h('span', t('ws.solution'))) : null,
         h('button.icon-btn.icon-btn-sm', { 'data-tip': t('ws.reset'), onClick: () => doReset() }, icon('rotate-ccw')),
@@ -130,7 +135,7 @@ export const workspace = {
       const entry = { model, isSolution: !!opts.solution, readonly: !!opts.solution || readonly.has(path) };
       models.set(opts.solution ? `${path} ✦` : path, entry);
       if (!entry.isSolution) {
-        model.onDidChangeContent(() => { dirty.add(path); setSaved(); renderTabs(); autosave(path); });
+        model.onDidChangeContent(() => { if (reloading) return; dirty.add(path); setSaved(); renderTabs(); autosave(path); });
       }
       return model;
     }
@@ -223,6 +228,65 @@ export const workspace = {
       await refreshTree();
     }
 
+    /* ─── AI: this editor is "the code the learner is looking at" ─── */
+    function codeSnapshot() {
+      const model = editor?.getModel();
+      const entry = active ? models.get(active) : null;
+      const sel = editor?.getSelection();
+      const has = sel && model && !sel.isEmpty();
+      return {
+        wsId: id,
+        title,
+        file: active ? active.replace(/ ✦$/, '') : '',
+        language: model?.getLanguageId() || '',
+        cursorLine: editor?.getPosition()?.lineNumber || null,
+        selection: has ? model.getValueInRange(sel) : null,
+        lines: has ? [sel.startLineNumber, sel.endLineNumber] : null,
+        code: model ? model.getValue() : '',
+        solution: !!entry?.isSolution,
+      };
+    }
+    function publishCode() {
+      if (!editor) return;
+      setCodeContext({ owner: el, courseId: rctx.courseId, page: rctx.src, snapshot: codeSnapshot });
+    }
+    const resultsText = () => (results.hidden || !results.textContent.trim() ? '' : results.innerText.trim().slice(0, 3000));
+    function askAI(send, opts = {}) {
+      publishCode();
+      const extra = opts.withResults && resultsText() ? `${t('ws.ai.resultsLabel')}\n\`\`\`\n${resultsText()}\n\`\`\`` : null;
+      rctx.page.lesson?.askAI({ send, extra, ...opts });
+    }
+    function aiMenu(anchor) {
+      menu(anchor, [
+        { label: t('ws.ai.ask'), icon: 'message-circle', onClick: () => askAI(null) },
+        { label: t('ws.ai.explain'), icon: 'book-open-text', onClick: () => askAI(t('ws.ai.explainMsg')) },
+        { label: t('ws.ai.debug'), icon: 'bug', onClick: () => askAI(t('ws.ai.debugMsg'), { withResults: true }) },
+        { label: t('ws.ai.idea'), icon: 'lightbulb', onClick: () => askAI(t('ws.ai.ideaMsg')) },
+        { label: t('ws.ai.revise'), icon: 'wand-sparkles', onClick: () => { publishCode(); rctx.page.lesson?.askAI({ edit: true, prefill: t('ws.ai.revisePrefill') }); } },
+        '-',
+        { label: t('ws.ai.mark'), icon: 'highlighter', onClick: () => rctx.page.lesson?.markBlock?.(el, 'ask') },
+      ], { align: 'end' });
+    }
+
+    /* The AI (or anything else) changed learner files on disk: reload clean tabs. */
+    let reloading = false;
+    const wsPrefix = `learner/workspaces/${pageKey(rctx.src)}/${String(id).replace(/[^\w.-]+/g, '-')}/`;
+    const offFiles = bus.on('ws:files', async ({ courseId, paths }) => {
+      if (courseId !== rctx.courseId || !editor) return;
+      const mine = paths.filter(p => p.startsWith(wsPrefix)).map(p => p.slice(wsPrefix.length));
+      if (!mine.length) return;
+      for (const rel of mine) {
+        const m = models.get(rel);
+        if (!m || m.isSolution || dirty.has(rel)) continue;
+        let text;
+        try { text = await window.vla.ws.read(rctx.courseId, rctx.src, id, rel); } catch { continue; }
+        if (text === m.model.getValue()) continue;
+        reloading = true;
+        try { m.model.pushEditOperations([], [{ range: m.model.getFullModelRange(), text }], () => null); } finally { reloading = false; }
+      }
+      refreshTree();
+    });
+
     async function init() {
       try {
         monaco = await loadMonaco();
@@ -231,6 +295,10 @@ export const workspace = {
         editorHost.replaceChildren();
         editor = await createEditor(editorHost, { readOnly: false });
         editor.onDidChangeCursorPosition(e => { statusPos.textContent = `${e.position.lineNumber}:${e.position.column}`; });
+        editor.onDidFocusEditorText(() => publishCode());
+        editor.onDidChangeCursorSelection(() => contextChanged());
+        editor.addAction({ id: 'vla.ai.explain', label: t('ws.ai.explainCtx'), contextMenuGroupId: '0_vla', contextMenuOrder: 1, run: () => askAI(t('ws.ai.explainMsg')) });
+        editor.addAction({ id: 'vla.ai.ask', label: t('ws.ai.askCtx'), contextMenuGroupId: '0_vla', contextMenuOrder: 2, run: () => askAI(null) });
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => saveAll());
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => doRun());
         const first = tree.find(f => !f.dir && f.path === main) || tree.find(f => !f.dir);
@@ -378,6 +446,8 @@ export const workspace = {
 
     rctx.lazy(el, init);
     rctx.onDispose(() => {
+      offFiles();
+      clearCodeContext(el);
       autosave.cancel();
       for (const path of dirty) {
         const m = models.get(path);

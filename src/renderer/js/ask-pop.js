@@ -79,7 +79,7 @@ export function openAsk(question, { anchor, context } = {}, ctx) {
           question: context ? `${q}\n\n(${context})` : q,
         }),
         courseId: ctx.courseId,
-        onDelta: d => { acc += d; answerBox.innerHTML = renderHtml(acc); clamp(); },
+        onText: full => { acc = full; answerBox.innerHTML = renderHtml(acc); clamp(); },
       });
       renderFoot();
       const r = await job.promise;

@@ -19,6 +19,7 @@ export const ACTION_TYPES = ['exec', 'script', 'http', 'open', 'ask-ai', 'ui', '
 export const UI_COMMANDS = [
   'prev', 'next', 'home', 'course', 'toggle-sidebar', 'toggle-notes', 'toggle-terminal',
   'focus', 'theme', 'highlight', 'edit', 'export', 'export-ai', 'settings', 'help', 'complete', 'reload',
+  'ai', 'ai-edit',
 ];
 
 const C = 'container';
@@ -49,6 +50,7 @@ export const DIRECTIVES = {
   },
   tests: { kind: C, parent: 'workspace', attrs: ['build'], yaml: true },
   solution: { kind: C, parent: 'workspace', attrs: [] },
+  fullscreen: { kind: C, attrs: [] },
 
   pdf: { kind: L, attrs: ['src', 'page', 'height', 'title'], src: true },
   video: { kind: L, attrs: ['src', 'poster', 'start', 'height'], src: true },
@@ -113,6 +115,32 @@ export function collectRefs(text) {
   return refs.filter(r => r.src && !/^(https?:|mailto:|data:|#|vla:)/i.test(r.src));
 }
 
+/* How many elements a list of parsed nodes holds: each directive is one,
+   and Markdown counts one per block (blank-line separated, fences whole). */
+export function countElements(nodes) {
+  let n = 0;
+  for (const node of nodes || []) {
+    if (node.type === 'container' || node.type === 'leaf') { n++; continue; }
+    if (node.type !== 'md') continue;
+    let fence = null;
+    let inBlock = false;
+    for (const line of String(node.text || '').split(/\r?\n/)) {
+      const f = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+      if (fence) { if (f && f[1][0] === fence[0] && f[1].length >= fence.length) fence = null; continue; }
+      if (f) { fence = f[1]; if (!inBlock) n++; inBlock = true; continue; }
+      if (!line.trim()) { inBlock = false; continue; }
+      if (!inBlock) { n++; inBlock = true; }
+    }
+  }
+  return n;
+}
+
+/* A page that is only a :::fullscreen block fills the whole reading area. */
+export function isFillPage(tree) {
+  const top = (tree?.children || []).filter(c => c.type !== 'md' || String(c.text || '').trim());
+  return top.length === 1 && top[0].type === 'container' && top[0].name === 'fullscreen';
+}
+
 /* Text-level checks. Returns [{ level: 'error'|'warn', line, msg }]. */
 export function validateVitentText(text) {
   const issues = [];
@@ -153,6 +181,11 @@ export function validateVitentText(text) {
       const survey = node.attrs.type === 'survey' || node.attrs.type === 'poll';
       if (!opts && node.attrs.answer == null && !survey && node.attrs.type !== 'open') add('error', line, 'quiz needs options (- [ ] / - [x]) or answer="…"');
       if (opts && !right && !survey) add('error', line, 'quiz has options but none is marked correct with - [x]');
+    }
+    if (node.name === 'fullscreen') {
+      if (parent && parent.type !== 'root') add('error', line, '"fullscreen" must be at the top level of the page, not inside another directive');
+      const n = countElements(node.children);
+      if (n !== 1) add('error', line, `fullscreen must contain exactly one element (found ${n})`);
     }
     if (node.name === 'cloze' && !/\[\[[^\]]+\]\]/.test(node.raw)) add('error', line, 'cloze needs at least one [[blank]]');
     if (node.name === 'parsons' && !fencesIn(node.raw).length) add('error', line, 'parsons needs a fenced code block with the lines in the correct order');

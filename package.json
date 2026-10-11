@@ -1,7 +1,7 @@
 {
   "name": "vibe-learn-anything",
   "productName": "Vibe Learn Anything",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Learn anything with AI-generated interactive courses (.vla / .vitent).",
   "type": "module",
   "main": "src/main/main.js",
@@ -23,7 +23,9 @@
     "e2e": "node tools/build.mjs && node test/drive.mjs test/e2e-tour.mjs --trust vla-tour",
     "dist": "node tools/build.mjs --prod && npm run examples && electron-builder --win --x64",
     "media": "node tools/build.mjs && node tools/record-media.mjs",
-    "e2e:ai": "node tools/build.mjs && node test/drive.mjs test/e2e-ai.mjs --trust vla-tour"
+    "e2e:ai": "node tools/build.mjs && node test/drive.mjs test/e2e-ai.mjs --trust vla-tour",
+    "e2e:chat": "node tools/build.mjs && node test/drive.mjs test/e2e-chat.mjs --trust vla-tour",
+    "e2e:edit": "node tools/build.mjs && node test/drive.mjs test/e2e-edit.mjs --trust vla-tour"
   },
   "dependencies": {
     "fflate": "^0.8.3",

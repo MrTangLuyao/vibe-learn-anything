@@ -15,6 +15,9 @@
 .vt-article ul, .vt-article ol { margin: 0 0 1em; padding-left: 1.6em; }
 .vt-article li { margin: .25em 0; }
 .vt-article li > p { margin: 0 0 .4em; }
+/* tight-list item text (source-mapped for in-place editing) looks like bare li text */
+.vt-article li > p.tight { margin: 0; }
+.vt-article li > p.tight > img:only-child { margin: 0 auto; }
 .vt-article li::marker { color: var(--accent); }
 .vt-article ul.contains-task-list { list-style: none; padding-left: .4em; }
 .vt-article .task-list-item input { margin-right: .5em; accent-color: var(--accent); }

@@ -8,6 +8,7 @@ import { t, getLang } from './core/i18n.js';
 import { state, saveSettings, bus } from './core/store.js';
 import { go } from './core/router.js';
 import { menu } from './core/ui.js';
+import { toggleChat, isChatOpen } from './chat.js';
 
 let cfg = { crumbs: [], left: [], right: [], page: 'learn' };
 
@@ -33,6 +34,10 @@ export function renderAppbar() {
     if (c.href && i < cfg.crumbs.length - 1) crumbs.append(h('button.crumb', { onClick: () => go(c.href) }, c.label));
     else crumbs.append(h('b.ellipsis', c.label));
   });
+  const aiBtn = h(`button.chip-btn.ai-btn${isChatOpen() ? '.is-active' : ''}`, {
+    onClick: () => toggleChat(),
+    'data-tip': t('chat.tip'),
+  }, icon('sparkles'), h('span', 'AI'));
   const themeBtn = h('button.icon-btn.icon-btn-sm', {
     onClick: () => cycleTheme(),
     'data-tip': t('theme.' + (state.settings?.theme || 'dark')),
@@ -58,6 +63,7 @@ export function renderAppbar() {
     h('div.ab-spacer'),
     h('div.ab-slot', cfg.right),
     cfg.right?.length ? h('div.ab-divider') : null,
+    aiBtn,
     themeBtn,
     langBtn,
     h('button.icon-btn.icon-btn-sm', { onClick: () => go('/settings'), 'data-tip': t('settings') }, icon('settings')),
@@ -71,3 +77,4 @@ export function setAppbar(next) {
 }
 
 bus.on('settings', () => renderAppbar());
+bus.on('chat:toggle', () => renderAppbar());

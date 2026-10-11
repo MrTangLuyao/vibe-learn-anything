@@ -33,6 +33,13 @@ function mdText(node) {
   return node.children.filter(c => c.type === 'md').map(c => c.text).join('\n');
 }
 
+/* Small "start over" button: clears this widget's saved progress and re-renders the page. */
+function resetBtn(rctx, kind, id) {
+  const lesson = rctx.page.lesson;
+  if (!lesson?.resetProgress) return null;
+  return h('button.icon-btn.icon-btn-xs.vx-reset', { 'data-vh-skip': '', 'data-tip': t('widget.reset'), onClick: () => lesson.resetProgress(kind, id) }, icon('rotate-ccw'));
+}
+
 function explainBox(nodes, rctx, kind) {
   if (!nodes.length) return null;
   const box = h(`div.quiz-explain${kind === 'hint' ? '.is-hint' : ''}`, h('div.qe-title', t(kind === 'hint' ? 'quiz.hint' : 'quiz.explain')));
@@ -96,7 +103,7 @@ export const quiz = {
 
     const el = h('div.vx-box.vx-quiz');
     const headLabel = t(`quiz.type.${type}`) || type;
-    el.append(h('div.vx-box-head', icon(survey ? 'clipboard-list' : 'circle-help'), h('span', t('quiz')), h('span', '·'), h('span', headLabel), h('span.grow'),
+    el.append(h('div.vx-box-head', icon(survey ? 'clipboard-list' : 'circle-help'), h('span', t('quiz')), h('span', '·'), h('span', headLabel), h('span.grow'), resetBtn(rctx, 'quiz', id),
       a.points ? h('span', `${a.points} ${t('quiz.points')}`) : null));
     const body = h('div.vx-box-body');
     body.append(h('div.quiz-q', rctx.md(question)));
@@ -273,7 +280,7 @@ export const cloze = {
       }
     };
     foot.append(h('button.btn.btn-primary.btn-sm', { onClick: check }, icon('check'), h('span', t('quiz.check'))));
-    el.append(h('div.vx-box-head', icon('text-cursor-input'), h('span', t('cloze'))), h('div.vx-box-body', frag), foot);
+    el.append(h('div.vx-box-head', icon('text-cursor-input'), h('span', t('cloze')), h('span.grow'), resetBtn(rctx, 'quiz', id)), h('div.vx-box-body', frag), foot);
     for (const inp of inputs) inp?.addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
     if (saved.correct) { inputs.forEach(i => i?.classList.add('is-right')); el.classList.add('is-correct'); }
     return el;
@@ -321,7 +328,7 @@ export const parsons = {
         if (all && expl && !expl.isConnected) el.append(expl);
       },
     }, icon('check'), h('span', t('quiz.check'))));
-    el.append(h('div.vx-box-head', icon('list-ordered'), h('span', t('parsons'))),
+    el.append(h('div.vx-box-head', icon('list-ordered'), h('span', t('parsons')), h('span.grow'), resetBtn(rctx, 'quiz', id)),
       h('div.vx-box-body', intro ? rctx.md(intro) : null, list), foot);
     if (saved.correct) el.classList.add('is-correct');
     return el;
@@ -356,7 +363,7 @@ export const flashcards = {
       rctx.report('widgets', id, { seen: [...seen] });
     });
     const el = h('div.vx-box',
-      h('div.vx-box-head', icon('layers'), h('span', t('fc')), h('span.grow'), h('span', t('fc.tap'))),
+      h('div.vx-box-head', icon('layers'), h('span', t('fc')), h('span.grow'), h('span', t('fc.tap')), resetBtn(rctx, 'widgets', id)),
       h('div.vx-box-body', h('div.fc-stage', card)),
       h('div.vx-foot', { 'data-vh-skip': '' },
         h('button.icon-btn.icon-btn-sm', { onClick: () => { i = (i - 1 + cards.length) % cards.length; show(); }, 'aria-label': t('lb.prev') }, icon('chevron-left')),

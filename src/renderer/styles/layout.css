@@ -227,6 +227,11 @@
 
 .lesson.is-focus .sidebar { margin-left: calc(-1 * var(--sidebar-w, 288px)); }
 :root.is-focus .appbar { display: none; }
+/* Without the app bar the lesson bar becomes the title bar: leave room for the
+   window controls and let it drag the window. */
+:root.is-focus .lessonbar { height: var(--appbar-h); padding-right: calc(var(--overlay-w) + 10px); -webkit-app-region: drag; }
+:root.is-focus .lessonbar button, :root.is-focus .lessonbar a { -webkit-app-region: no-drag; }
+:root[data-platform="darwin"].is-focus .lessonbar { padding-left: 84px; }
 
 /* Edit mode: markdown on the left, live preview on the right */
 .editor-split { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; min-height: 0; }

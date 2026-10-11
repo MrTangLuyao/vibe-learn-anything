@@ -9,6 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { shell } from 'electron';
 import { P } from './paths.js';
+import { markSelf } from './watch.js';
 import {
   extractVla, expandVitents, packVla, readJson, writeJson, normalizeCourse, allPages, pageMeta,
   normalizeAnnotations, mergeAnnotations, emptyAnnotations, safeJoin, sanitizeId, normRel, pageKey,
@@ -287,12 +288,44 @@ export function absPath(id, rel) {
 
 export function savePage(id, src, text) {
   const file = safeJoin(courseDir(id), path.posix.join(normRel(src), 'index.md'));
+  markSelf(file);
   fs.writeFileSync(file, text);
   return true;
 }
 
 export function saveAnnotations(id, data) {
-  writeJson(path.join(courseDir(id), 'annotations.json'), normalizeAnnotations(data));
+  const file = path.join(courseDir(id), 'annotations.json');
+  markSelf(file);
+  writeJson(file, normalizeAnnotations(data));
+  return true;
+}
+
+/* Remove a page from the course: course.json entry, its folder (to the
+   trash), its progress, highlights and workspace code. */
+export async function deletePage(id, src) {
+  const dir = courseDir(id);
+  const rel = normRel(src);
+  const cjFile = path.join(dir, 'course.json');
+  const cj = readJson(cjFile);
+  const keep = list => (Array.isArray(list) ? list : []).filter(p => normRel(typeof p === 'string' ? p : p?.src || '') !== rel);
+  for (const u of cj.units || []) for (const ch of u.chapters || []) ch.pages = keep(ch.pages);
+  for (const ch of cj.chapters || []) ch.pages = keep(ch.pages);
+  markSelf(cjFile);
+  writeJson(cjFile, cj);
+  const abs = safeJoin(dir, rel);
+  markSelf(abs, { dir: true });
+  if (fs.existsSync(abs)) {
+    try { await shell.trashItem(abs); } catch { fs.rmSync(abs, { recursive: true, force: true }); }
+  }
+  const progFile = path.join(dir, 'learner', 'progress.json');
+  const prog = progressOf(dir);
+  if (prog.pages?.[rel]) { delete prog.pages[rel]; writeJson(progFile, prog); }
+  const annFile = path.join(dir, 'annotations.json');
+  const ann = annotationsOf(dir);
+  const before = ann.highlights.length;
+  ann.highlights = ann.highlights.filter(h => h.page !== rel);
+  if (ann.highlights.length !== before) { markSelf(annFile); writeJson(annFile, ann); }
+  fs.rmSync(path.join(dir, 'learner', 'workspaces', pageKey(rel)), { recursive: true, force: true });
   return true;
 }
 
@@ -346,12 +379,14 @@ function writeStarter(root, id, pageSrc, starter) {
 
 export function wsInit(id, pageSrc, wsId, starter = {}) {
   const root = wsRoot(id, pageSrc, wsId);
+  markSelf(root, { dir: true });
   if (!fs.existsSync(root) || !fs.readdirSync(root).length) writeStarter(root, id, pageSrc, starter);
   return { root, tree: listTree(root) };
 }
 
 export function wsReset(id, pageSrc, wsId, starter = {}) {
   const root = wsRoot(id, pageSrc, wsId);
+  markSelf(root, { dir: true });
   fs.rmSync(root, { recursive: true, force: true });
   writeStarter(root, id, pageSrc, starter);
   return { root, tree: listTree(root) };
@@ -367,18 +402,21 @@ export function wsRead(id, pageSrc, wsId, rel) {
 
 export function wsWrite(id, pageSrc, wsId, rel, content) {
   const f = safeJoin(wsRoot(id, pageSrc, wsId), rel);
+  markSelf(f);
   fs.mkdirSync(path.dirname(f), { recursive: true });
   fs.writeFileSync(f, content ?? '');
   return true;
 }
 
 export function wsDelete(id, pageSrc, wsId, rel) {
+  markSelf(safeJoin(wsRoot(id, pageSrc, wsId), rel), { dir: true });
   fs.rmSync(safeJoin(wsRoot(id, pageSrc, wsId), rel), { recursive: true, force: true });
   return true;
 }
 
 export function wsRename(id, pageSrc, wsId, from, to) {
   const root = wsRoot(id, pageSrc, wsId);
+  markSelf(root, { dir: true });
   const dest = safeJoin(root, to);
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.renameSync(safeJoin(root, from), dest);
@@ -389,14 +427,33 @@ export function wsPath(id, pageSrc, wsId) {
   return wsRoot(id, pageSrc, wsId);
 }
 
-/* First launch: import the bundled example courses. */
+const versionNum = v => String(v || '0').split('.').map(n => Number.parseInt(n, 10) || 0);
+function newer(a, b) {
+  const x = versionNum(a);
+  const y = versionNum(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  return false;
+}
+
+/* First launch: import the bundled example courses. Later launches: bring an
+   installed example up to the bundled version (learner data is kept); an
+   example the learner removed stays removed. */
 export function seedExamples() {
   fs.mkdirSync(P.library, { recursive: true });
-  if (fs.readdirSync(P.library).length || !fs.existsSync(P.examples)) return [];
+  if (!fs.existsSync(P.examples)) return [];
+  const fresh = !fs.readdirSync(P.library).length;
   const done = [];
   for (const f of fs.readdirSync(P.examples)) {
     if (!f.endsWith('.vla')) continue;
-    try { const r = importVla(path.join(P.examples, f)); if (r.conflict) resolveImport(r.token, 'cancel'); else done.push(r.id); } catch { /* skip broken example */ }
+    const tmp = freshTemp('example');
+    try {
+      extractVla(path.join(P.examples, f), tmp);
+      const course = loadCourseRaw(tmp);
+      const exists = fs.existsSync(courseDir(course.id));
+      if (!exists && fresh) { install(tmp, course.id); done.push(course.id); continue; }
+      if (exists && newer(course.version, loadCourseRaw(courseDir(course.id)).version)) { updateInPlace(tmp, course.id); done.push(course.id); continue; }
+    } catch { /* skip a broken example */ }
+    fs.rmSync(tmp, { recursive: true, force: true });
   }
   return done;
 }

@@ -13,6 +13,7 @@ import * as settings from './settings.js';
 import * as library from './library.js';
 import * as exec from './exec.js';
 import * as kit from './kit.js';
+import * as claude from './claude.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 let win = null;
@@ -125,6 +126,8 @@ app.whenReady().then(() => {
   try { exec.ensureShims(); } catch { /* shims are a convenience */ }
   try { library.seedExamples(); } catch { /* the library still works empty */ }
   createWindow();
+  /* Look for Claude Code in the background so the first question is quick. */
+  setTimeout(() => { claude.status().catch(() => {}); }, 1500);
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
 });
 

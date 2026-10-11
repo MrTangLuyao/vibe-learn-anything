@@ -15,8 +15,12 @@ const DEFAULTS = {
   ai: {
     http: { baseUrl: '', model: '', key: '', temperature: 0.3, maxTokens: 2048 },
     agent: { command: '', interactive: '', stdin: true },
+    /* The learner's Claude Code CLI: found automatically unless path is set. */
+    claude: { path: '', model: '', userMcp: false, allowEdits: true },
     prefer: 'auto',
   },
+  /* source: the pencil opens the Markdown source editor instead of in-place text editing. */
+  editor: { source: false },
   trust: {},
 };
 

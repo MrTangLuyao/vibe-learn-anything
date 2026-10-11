@@ -7,7 +7,7 @@
   "description": "这门课本身就是用 **.vla / .vitent** 格式写成的。每一页演示一类功能——你看到的一切，AI 都能为任何主题生成。\n\n> 小技巧：在任何地方选中文字，都可以高亮、写注释，或者「问 AI」。",
   "color": "#d97757",
   "icon": "compass",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "language": "zh-CN",
   "authors": [{ "name": "answer" }],
   "ai": {
@@ -16,11 +16,11 @@
   "units": [
     {
       "id": "week-0",
-      "title": "Week 0 · 认识界面",
+      "title": "认识界面",
       "chapters": [
         {
           "id": "w0-read",
-          "title": "Week 0: 阅读与组件",
+          "title": "阅读与组件",
           "kind": "lesson",
           "description": "正文、公式、图表、布局组件、PDF / Word / 音频",
           "pages": [
@@ -32,7 +32,7 @@
         },
         {
           "id": "w0-check",
-          "title": "Week 0: 测验与记忆",
+          "title": "测验与记忆",
           "kind": "quiz",
           "description": "选择题、填空、代码排序、开放题、记忆卡片",
           "pages": [
@@ -44,28 +44,28 @@
     },
     {
       "id": "week-1",
-      "title": "Week 1 · 动手写代码",
+      "title": "动手写代码",
       "chapters": [
         {
           "id": "w1-workshop",
-          "title": "Week 1 Workshop: 代码工作区",
+          "title": "代码工作区",
           "kind": "code",
-          "due": "2026-12-01T23:59",
           "pages": [
             "content/w1/snippets.vitent",
             "content/w1/workspace.vitent",
-            "content/w1/terminal-actions.vitent"
+            "content/w1/terminal-actions.vitent",
+            "content/w1/fullscreen.vitent"
           ]
         }
       ]
     },
     {
       "id": "week-2",
-      "title": "Week 2 · 和 AI 一起学",
+      "title": "和 AI 一起学",
       "chapters": [
         {
           "id": "w2-ai",
-          "title": "Week 2: 高亮、提问与修改",
+          "title": "高亮、提问与修改",
           "kind": "lesson",
           "pages": [
             "content/w2/highlight.vitent",

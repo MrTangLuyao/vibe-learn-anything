@@ -1,47 +1,117 @@
 /* ============================================================
  * ai.js — everything that talks to the learner's AI.
- *   ask()            quick Q&A (HTTP endpoint, else the agent command)
- *   runAgent()       the agent works inside the course folder
- *   *Prompt()        the instructions we hand to an AI
+ *   status() / pickProvider()   which AI answers: Claude Code (the
+ *                               learner's own CLI), an HTTP endpoint,
+ *                               or another command-line agent
+ *   ask()                       quick Q&A
+ *   runAgent()                  the AI works inside the course folder
+ *   turn()                      one turn of the side-panel chat
+ *   *Prompt()                   the instructions we hand to an AI
  * ============================================================ */
 
 import { getLang, t } from './core/i18n.js';
 import { state } from './core/store.js';
 
 let reqSeq = 0;
+let lastStatus = null;
 
-export async function status() {
-  return window.vla.ai.status();
+export async function status(opts = {}) {
+  lastStatus = await window.vla.ai.status(opts);
+  return lastStatus;
 }
 
-function stream(kind, req, onDelta, onLog) {
+export function cachedStatus() {
+  return lastStatus;
+}
+
+/* 'claude' | 'http' | 'agent' | null */
+export function pickProvider(s) {
+  if (!s) return null;
+  const pref = state.settings?.ai?.prefer || 'auto';
+  const c = s.claude;
+  const has = { claude: !!c?.found, http: !!s.http, agent: !!s.agent };
+  if (pref !== 'auto' && has[pref]) return pref;
+  if (c?.found && c.loggedIn !== false) return 'claude';
+  if (s.http) return 'http';
+  if (s.agent) return 'agent';
+  if (c?.found) return 'claude';
+  return null;
+}
+
+function aiError(r) {
+  const e = new Error(r.error);
+  e.code = r.code || 'AI';
+  return e;
+}
+
+/* handlers: onDelta(text piece), onText(whole current text), onEvent(e), onLog(text) */
+function stream(kind, req, handlers = {}) {
   const requestId = `r${Date.now()}-${++reqSeq}`;
-  const offChunk = window.vla.ai.onChunk(p => { if (p.requestId === requestId) onDelta?.(p.delta); });
-  const offLog = window.vla.ai.onLog(p => { if (p.requestId === requestId) onLog?.(p.text); });
-  const promise = (kind === 'chat' ? window.vla.ai.chat({ ...req, requestId }) : window.vla.ai.agent({ ...req, requestId }))
-    .finally(() => { offChunk(); offLog(); });
+  let text = '';
+  let started = false;
+  const offs = [
+    window.vla.ai.onChunk(p => {
+      if (p.requestId !== requestId) return;
+      text += p.delta;
+      handlers.onDelta?.(p.delta);
+      handlers.onText?.(text);
+    }),
+    window.vla.ai.onLog(p => { if (p.requestId === requestId) handlers.onLog?.(p.text); }),
+    window.vla.ai.onEvent(p => {
+      if (p.requestId !== requestId) return;
+      /* A new text block after tool use: the answer starts over (handlers see
+         the event first, while the previous text is still there). */
+      handlers.onEvent?.(p);
+      if (p.kind === 'text-start') { if (started && text) { text = ''; handlers.onText?.(''); } started = true; }
+    }),
+  ];
+  const call = kind === 'chat' ? window.vla.ai.chat : kind === 'claude' ? window.vla.ai.claude : window.vla.ai.agent;
+  const promise = call({ ...req, requestId })
+    .then(r => { if (r?.error) throw aiError(r); return r; })
+    .finally(() => offs.forEach(off => off()));
   return { promise, abort: () => window.vla.ai.abort(requestId), requestId };
 }
 
-/* Q&A. Prefers the HTTP endpoint; falls back to the CLI agent. */
-export async function ask({ messages, courseId, onDelta, onLog }) {
-  const s = await status();
-  const pref = state.settings?.ai?.prefer || 'auto';
-  const useHttp = s.http && (pref !== 'agent' || !s.agent);
-  if (useHttp) return stream('chat', { messages }, onDelta, onLog);
-  if (s.agent) {
-    const prompt = messages.map(m => (m.role === 'system' ? m.content : `${m.role === 'user' ? '### Learner' : '### Answer'}\n${m.content}`)).join('\n\n');
-    return stream('agent', { prompt: `${prompt}\n\n${getLang() === 'en' ? 'Reply with the answer only (Markdown). Do not modify any files.' : '只输出回答本身（Markdown），不要修改任何文件。'}`, courseId }, onDelta, onLog);
-  }
-  throw Object.assign(new Error(t('ai.notConfigured')), { code: 'NO_AI' });
+const flatten = messages => messages
+  .map(m => (m.role === 'system' ? m.content : `${m.role === 'user' ? '### Learner' : '### Answer'}\n${m.content}`))
+  .join('\n\n');
+
+function noAi() {
+  return Object.assign(new Error(t('ai.notConfigured')), { code: 'NO_AI' });
 }
 
-export function runAgent({ prompt, courseId, onDelta, onLog }) {
-  return stream('agent', { prompt, courseId }, onDelta, onLog);
+/* Q&A. Resolves to a job { promise, abort }. */
+export async function ask({ messages, courseId, onDelta, onText, onLog, onEvent }) {
+  const s = await status();
+  const p = pickProvider(s);
+  const handlers = { onDelta, onText, onLog, onEvent };
+  if (p === 'http') return stream('chat', { messages }, handlers);
+  const readOnly = getLang() === 'en' ? 'Reply with the answer only (Markdown). Do not modify any files.' : '只输出回答本身（Markdown），不要修改任何文件。';
+  if (p === 'claude') return stream('claude', { prompt: `${flatten(messages)}\n\n${readOnly}`, courseId, mode: 'ask' }, handlers);
+  if (p === 'agent') return stream('agent', { prompt: `${flatten(messages)}\n\n${readOnly}`, courseId }, handlers);
+  throw noAi();
+}
+
+/* The AI edits the course folder (or the AI workspace) in place. */
+export async function runAgent({ prompt, courseId, onDelta, onText, onLog, onEvent }) {
+  const s = await status();
+  const p = pickProvider(s);
+  const handlers = { onDelta, onText, onLog, onEvent };
+  if (p === 'claude') return stream('claude', { prompt, courseId, mode: 'edit' }, handlers);
+  if (s.agent) return stream('agent', { prompt, courseId }, handlers);
+  throw Object.assign(new Error(t('ai.agentMissing')), { code: 'NO_AGENT' });
+}
+
+/* One chat turn. provider from pickProvider(); for http, `messages` carries the history. */
+export function turn(provider, { prompt, firstPrompt, messages, courseId, mode, sessionId }, handlers) {
+  if (provider === 'claude') return stream('claude', { prompt, firstPrompt, courseId, mode, sessionId }, handlers);
+  if (provider === 'http') return stream('chat', { messages, maxTokens: 4096 }, handlers);
+  if (provider === 'agent') return stream('agent', { prompt: firstPrompt || prompt, courseId }, handlers);
+  throw noAi();
 }
 
 /* Forward slashes read cleanly in prompts and work on every OS. */
-const slash = p => String(p || '').replace(/\\/g, '/');
+export const slash = p => String(p || '').replace(/\\/g, '/');
 
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n)}\n…(truncated)` : s);
 
@@ -92,23 +162,27 @@ export function exportPrompt({ workDir: dir, file, id }) {
 4. 课程版本号 +0.0.1，校验通过后打包到 ${workDir}/out/${id}.vla —— 应用会提示导入。`;
 }
 
-/* The agent edits the unpacked course in place (cwd = course folder). */
-export function agentPrompt({ workDir: dir, ids, course }) {
+/* The agent edits the unpacked course in place (cwd = course folder).
+   mcp: the agent has this app's MCP tools (and no shell). */
+export function agentPrompt({ workDir: dir, ids, course, mcp = false }) {
   const workDir = slash(dir);
   const list = ids?.length ? ids.join(', ') : null;
+  const validate = getLang() === 'en'
+    ? (mcp ? 'Finally call the vibe-learn MCP tool validate_course and fix any error.' : `Finally run: node "${workDir}/tools/vla.mjs" validate .  and fix any error.`)
+    : (mcp ? '最后调用 vibe-learn MCP 工具 validate_course 校验，并修复所有错误。' : `最后运行：node "${workDir}/tools/vla.mjs" validate .  并修复所有错误。`);
   return getLang() === 'en'
     ? `You are "answer", the AI tutor of the Vibe Learn Anything course "${course.title}". The current directory is the unpacked course (course.json, content/**/*.vitent/index.md, annotations.json).
 Formats: read ${workDir}/ai_manual/05-annotations.md and ${workDir}/ai_manual/02-vitent-format.md first.
 Task: in annotations.json handle ${list ? `these highlights: ${list}` : 'every highlight whose kind is "ask" or "revise" and whose status is "open"'}.
-- ask: append {"id": "c-<random>", "author": "answer", "text": "<Markdown answer>", "created": "<ISO time>"} to its comments; set status "answered" and update "updated".
+- ask: append {"id": "c-<random>", "author": "answer", "text": "<Markdown answer>", "created": "<ISO time>"} to its comments; set status "answered" and update "updated".${mcp ? ' (The MCP tool reply_annotation does exactly this.)' : ''}
 - revise: edit the page's index.md as the learner asked (keep valid Vitent syntax), then append an "answer" comment describing the change; set status "applied". If you changed the highlighted text, update targets[].exact to the new wording.
 - Never delete or rewrite learner comments. Do not touch other highlights. Edit files in place; do not pack.
-Finally run: node "${workDir}/tools/vla.mjs" validate .  and fix any error. Reply in English with a short summary.`
+${validate} Reply in English with a short summary.`
     : `你是 Vibe Learn Anything 课程「${course.title}」的 AI 助教 answer。当前目录就是解包后的课程（course.json、content/**/*.vitent/index.md、annotations.json）。
 格式说明：先阅读 ${workDir}/ai_manual/05-annotations.md 和 ${workDir}/ai_manual/02-vitent-format.md。
 任务：处理 annotations.json 中${list ? `这些高亮：${list}` : '所有 kind 为 "ask" 或 "revise" 且 status 为 "open" 的高亮'}。
-- ask：在 comments 末尾追加 {"id": "c-<随机>", "author": "answer", "text": "<Markdown 回答>", "created": "<ISO 时间>"}，status 改为 "answered"，并更新 "updated"。
+- ask：在 comments 末尾追加 {"id": "c-<随机>", "author": "answer", "text": "<Markdown 回答>", "created": "<ISO 时间>"}，status 改为 "answered"，并更新 "updated"。${mcp ? '（MCP 工具 reply_annotation 就是做这件事的。）' : ''}
 - revise：按学习者的要求修改对应页面的 index.md（保持 Vitent 语法正确），再追加一条 answer 评论说明改了什么，status 改为 "applied"；如果被高亮的原文被改掉了，把 targets[].exact 更新为新的文字。
 - 不要删除或改写 learner 的评论，不要动其他高亮。直接修改当前目录里的文件，不要打包。
-最后运行：node "${workDir}/tools/vla.mjs" validate .  并修复所有错误。最后用中文简短总结你做了什么。`;
+${validate}最后用中文简短总结你做了什么。`;
 }

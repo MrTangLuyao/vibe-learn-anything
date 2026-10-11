@@ -37,7 +37,7 @@ estimate: 15
 | `title` | 页面标题（左侧列表与页面顶部）。`course.json` 里给页面写的 `title` 优先 |
 | `kind` | 左侧列表的图标：`doc` `reading` `code` `lab` `quiz` `survey` `slides` `pdf` `video` `project` |
 | `icon` | 可选，Lucide 图标名，覆盖 `kind` 的图标 |
-| `complete` | 完成规则：`view`（打开约 3 秒即完成）、`quiz`（本页测验全部答对）、`tests`（本页工作区测试全部通过）、`all`（测验和测试都要）、`manual`（只能点「标记为完成」）。不写时：有测验 → `quiz`；有带测试的工作区 → `tests`；否则 `view` |
+| `complete` | 完成规则：`manual`（学习者点页尾「标记为完成」或在页面列表里右键标记）、`view`（打开约 3 秒即完成）、`quiz`（本页测验全部答对）、`tests`（本页工作区测试全部通过）、`all`（测验和测试都要）。不写时：有测验 → `quiz`；有带测试的工作区 → `tests`；否则 `manual`。学习者随时可以在页面列表里右键「标记为未完成」或「重置进度」 |
 | `estimate` | 预计分钟数（信息性） |
 | `actions` | 本页动作，见 [04](04-actions-buttons.md) |
 | `buttons` | 本页按钮（优先级高于 `course.json`），见 [04](04-actions-buttons.md) |

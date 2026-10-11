@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   splitFrontmatter, parseAttrs, scanDirective, parseBlocks, parseFenceInfo, fencesIn, yamlBody, slugify,
 } from '../src/shared/vitent-parse.mjs';
-import { validateVitentText, collectRefs } from '../src/shared/directives.mjs';
+import { validateVitentText, collectRefs, countElements, isFillPage } from '../src/shared/directives.mjs';
 import { runnerFor, platformCommand, langOfFile } from '../src/shared/runners.mjs';
 
 test('frontmatter is split and parsed', () => {
@@ -116,4 +116,17 @@ test('runner presets and overrides', () => {
   assert.equal(platformCommand({ win: 'a', posix: 'b' }, 'win32'), 'a');
   assert.equal(platformCommand({ win: 'a', posix: 'b' }, 'linux'), 'b');
   assert.equal(langOfFile('src/Main.java'), 'java');
+});
+
+test(':::fullscreen holds exactly one element at the top level', () => {
+  const fm = '---\ntitle: T\n---\n';
+  const errs = text => validateVitentText(fm + text).filter(i => i.level === 'error').map(i => i.msg);
+  assert.deepEqual(errs(':::fullscreen\n::pdf{src="a.pdf"}\n:::\n'), []);
+  assert.deepEqual(errs(':::fullscreen\n```js\nconst a = 1;\n\nconst b = 2;\n```\n:::\n'), []);
+  assert.match(errs(':::fullscreen\nOne paragraph.\n\nAnother one.\n:::\n').join(), /exactly one element \(found 2\)/);
+  assert.match(errs(':::fullscreen\n:::\n').join(), /found 0/);
+  assert.match(errs('::::tip\n:::fullscreen\n::pdf{src="a.pdf"}\n:::\n::::\n').join(), /top level/);
+  assert.equal(countElements(parseBlocks('::video{src="v.mp4"}\n\ntext\n').children), 2);
+  assert.equal(isFillPage(parseBlocks('\n:::fullscreen\n::pdf{src="a.pdf"}\n:::\n\n')), true);
+  assert.equal(isFillPage(parseBlocks('# Title\n\n:::fullscreen\n::pdf{src="a.pdf"}\n:::\n')), false);
 });

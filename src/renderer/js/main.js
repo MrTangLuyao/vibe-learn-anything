@@ -9,6 +9,7 @@ import { setLang, t } from './core/i18n.js';
 import { applyTheme } from './core/theme.js';
 import { route, startRouter } from './core/router.js';
 import { importFiles } from './library-actions.js';
+import { restoreChat, toggleChat } from './chat.js';
 
 function setupDropImport() {
   let depth = 0;
@@ -67,7 +68,11 @@ async function boot() {
     actions: [{ label: t('import'), onClick: () => importFiles([file]) }],
   }));
   window.vla.kit.watch();
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'a') { e.preventDefault(); toggleChat(); }
+  });
   startRouter();
+  restoreChat();
 }
 
 boot().catch(e => {

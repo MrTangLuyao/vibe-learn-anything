@@ -5,9 +5,9 @@
 
 import { h, icon, debounce, storageGet, storageSet, dragResize } from '../core/dom.js';
 import { t, tl } from '../core/i18n.js';
-import { getCourse, state, saveSettings } from '../core/store.js';
+import { getCourse, state, saveSettings, bus } from '../core/store.js';
 import { go, setGuard } from '../core/router.js';
-import { toast, menu, spinner, dialog } from '../core/ui.js';
+import { toast, menu, spinner, dialog, confirm } from '../core/ui.js';
 import { setAppbar } from '../appbar.js';
 import { pageKind } from '../kinds.js';
 import { renderPage } from '../vitent/render.js';
@@ -20,7 +20,11 @@ import { NotesPanel } from '../highlight/notes.js';
 import { openAsk, closeAsk } from '../ask-pop.js';
 import { TerminalPanel } from '../terminal-panel.js';
 import { EditMode } from '../editmode.js';
+import { InlineEditor } from '../inline-edit.js';
 import { exportCourse, exportForAI } from '../library-actions.js';
+import { isFillPage } from '../../../shared/directives.mjs';
+import { setContextProvider, contextChanged } from '../ai-context.js';
+import { toggleChat, openChat, isChatOpen } from '../chat.js';
 
 class LessonView {
   constructor(host) {
@@ -61,8 +65,29 @@ class LessonView {
     if (storageGet('vla.sidebarHidden', false)) this.root.classList.add('no-sidebar');
     host.append(this.root);
 
+    /* --reader-h: lets :::fullscreen blocks size themselves to the visible area. */
+    this.ro = new ResizeObserver(() => this.reader.style.setProperty('--reader-h', `${this.reader.clientHeight}px`));
+    this.ro.observe(this.reader);
+    /* The last text the learner selected in the page (for the AI panel). */
+    this.selection = '';
+    this.onSel = () => {
+      const sel = window.getSelection();
+      const node = sel?.anchorNode;
+      if (!node || !this.reader.contains(node.nodeType === 1 ? node : node.parentElement)) return;
+      const text = sel.isCollapsed ? '' : sel.toString().trim();
+      if (text === this.selection) return;
+      this.selection = text;
+      contextChanged();
+    };
+    document.addEventListener('selectionchange', this.onSel);
+    this.offFs = window.vla.course.onChanged(p => this.onFsChange(p));
+    this.offChat = bus.on('chat:toggle', () => { if (this.rendered) this.renderBars(this.rendered.fm || {}); });
+
     this.api = {
       runAction: (spec, extra) => this.runAction(spec, extra),
+      resetProgress: (kind, id) => this.resetProgress(kind, id),
+      askAI: opts => openChat(opts),
+      markBlock: (el, kind) => this.markBlock(el, kind),
       ask: (prompt, opts) => this.ask(prompt, opts),
       goto: target => this.goto(target),
       ui: cmd => this.ui(cmd),
@@ -84,7 +109,27 @@ class LessonView {
     this.progress = this.data.progress;
     this.progress.pages ||= {};
     this.store = storeFor(this.courseId, this.data.annotations, this.data.state);
+    window.vla.course.watch(this.courseId);
+    this.offCtx = setContextProvider(() => this.context());
     return this.openChapter(params.chapter, params.page);
+  }
+
+  /* What the AI panel and the MCP server see as "where the learner is". */
+  context() {
+    const page = this.chapter?.pages[this.index];
+    return {
+      view: 'lesson',
+      courseId: this.courseId,
+      courseTitle: tl(this.course.title),
+      courseCode: this.course.code || '',
+      chapterId: this.chapter?.id,
+      chapterTitle: this.chapter ? tl(this.chapter.title) : '',
+      page: page?.src,
+      pageTitle: page ? this.pageTitle(page.src) : '',
+      pageIndex: this.index + 1,
+      pageCount: this.chapter?.pages.length || 0,
+      selection: this.selection || null,
+    };
   }
 
   findChapter(id) {
@@ -139,6 +184,7 @@ class LessonView {
       const done = !!this.progress.pages[p.src]?.completed;
       return h(`button.page-item${i === current ? '.is-current' : ''}`, {
         onClick: () => go(`/learn/${this.courseId}/${this.chapter.id}/${i + 1}`),
+        onContextmenu: e => this.pageMenu(e, p),
         title: this.pageTitle(p.src),
       },
       h('span.pi-icon', { style: { '--k': kind.color } }, icon(p.icon || meta.icon || kind.icon)),
@@ -184,21 +230,28 @@ class LessonView {
 
   /* ─── page ─── */
 
-  async showPage(index) {
+  /* opts.quiet: re-render in place (live reload) — no loading state, scroll kept. */
+  async showPage(index, opts = {}) {
     if (this.edit) { this.edit.destroy(); this.edit = null; this.readerWrap.replaceChildren(this.reader); }
     clearTimeout(this.completeTimer);
     closeAsk();
+    const keepScroll = opts.quiet ? this.reader.scrollTop : 0;
     this.highlighter?.destroy();
     this.highlighter = null;
-    this.rendered?.dispose();
+    const old = this.rendered;
     this.rendered = null;
+    if (!opts.quiet) old?.dispose();
     this.index = index;
     const page = this.chapter.pages[index];
     this.src = page.src;
+    this.selection = '';
     this.renderSidebar(index);
     this.lb.title.textContent = this.pageTitle(page.src);
-    this.inner.replaceChildren(h('div.reader-loading', spinner(), t('loading')));
-    this.reader.scrollTop = 0;
+    if (!opts.quiet) {
+      this.reader.classList.remove('is-fill');
+      this.inner.replaceChildren(h('div.reader-loading', spinner(), t('loading')));
+      this.reader.scrollTop = 0;
+    }
 
     let text;
     try {
@@ -215,11 +268,14 @@ class LessonView {
     this.progress.last = { chapter: this.chapter.id, page: page.src, at: new Date().toISOString() };
     this.saveProgress();
 
-    const r = await this.renderFor(text, this.reader, pp);
+    const r = await this.renderFor(text, this.reader, pp, opts.quiet ? { eager: true } : {});
+    if (opts.quiet) old?.dispose();
     if (this.index !== index) { r.dispose(); return; }
     this.rendered = r;
     this.pageEnd = h('div.page-end', { 'data-vh-skip': '' });
+    this.reader.classList.toggle('is-fill', isFillPage(r.tree));
     this.inner.replaceChildren(r.el, this.pageEnd);
+    if (opts.quiet) this.reader.scrollTop = keepScroll;
     this.renderBars(r.fm);
     this.renderPageEnd();
 
@@ -235,9 +291,12 @@ class LessonView {
     this.highlighter.paint();
     this.notes?.setPage(page.src);
 
-    const rule = r.fm.complete || (r.counts.quiz ? 'quiz' : r.counts.tests ? 'tests' : 'view');
+    /* Plain pages are completed by the learner (button at the end, or right-click
+       in the page list); complete: view in the frontmatter restores auto-complete. */
+    const rule = r.fm.complete || (r.counts.quiz ? 'quiz' : r.counts.tests ? 'tests' : 'manual');
     this.rule = rule;
     if (rule === 'view' && !pp.completed) this.completeTimer = setTimeout(() => this.markComplete(), 2500);
+    contextChanged();
 
     if (state.openNote) {
       const id = state.openNote;
@@ -273,6 +332,7 @@ class LessonView {
       case 'focus': return { active: this.root.classList.contains('is-focus') };
       case 'notes': return { active: !!this.notes, dot: this.store.all.some(x => this.store.unseen(x)) };
       case 'terminal': return { active: !!this.terminal };
+      case 'ai': return { active: isChatOpen() };
       case 'sidebar': return { active: !this.root.classList.contains('no-sidebar') };
       default: return {};
     }
@@ -309,7 +369,7 @@ class LessonView {
     const done = !!pp.completed;
     this.pageEnd.replaceChildren(
       done
-        ? h('span.badge.badge-ok', { style: { height: '30px', padding: '0 14px', fontSize: '12.5px' } }, icon('circle-check'), t('lesson.completed'))
+        ? h('button.btn.btn-done', { 'data-tip': t('lesson.unmarkTip'), onClick: () => this.setComplete(page.src, false) }, icon('circle-check'), h('span', t('lesson.completed')))
         : h('button.btn.btn-outline', { onClick: () => this.markComplete() }, icon('check'), h('span', t('lesson.markComplete'))),
       ...this.slot(this.bySlot || {}, 'page.end'),
       h('div.pe-nav',
@@ -335,13 +395,120 @@ class LessonView {
   }
 
   markComplete() {
-    const page = this.chapter.pages[this.index];
-    const pp = (this.progress.pages[page.src] ||= {});
-    if (pp.completed) return;
-    pp.completed = new Date().toISOString();
+    this.setComplete(this.chapter.pages[this.index].src, true);
+  }
+
+  setComplete(src, on) {
+    const pp = (this.progress.pages[src] ||= {});
+    if (!!pp.completed === on) return;
+    if (on) pp.completed = new Date().toISOString();
+    else delete pp.completed;
     this.saveProgress();
     this.renderSidebar(this.index);
     if (this.pageEnd) this.renderPageEnd();
+  }
+
+  pageMenu(e, p) {
+    e.preventDefault();
+    const done = !!this.progress.pages[p.src]?.completed;
+    menu({ x: e.clientX, y: e.clientY }, [
+      done
+        ? { label: t('page.markUndone'), icon: 'circle-dashed', onClick: () => this.setComplete(p.src, false) }
+        : { label: t('page.markDone'), icon: 'circle-check', onClick: () => this.setComplete(p.src, true) },
+      { label: t('page.resetProgress'), icon: 'rotate-ccw', onClick: () => this.resetPage(p.src) },
+      '-',
+      { label: t('page.delete'), icon: 'trash-2', danger: true, onClick: () => this.deletePage(p.src) },
+    ]);
+  }
+
+  /* Forget everything the learner did on a page: completion, quiz answers, tests. */
+  async resetPage(src) {
+    if (!(await confirm({ title: t('page.resetQ', { title: this.pageTitle(src) }), message: t('page.resetBody'), ok: t('page.resetProgress'), iconName: 'rotate-ccw' }))) return;
+    delete this.progress.pages[src];
+    this.saveProgress();
+    if (src === this.src) await this.showPage(this.index, { quiet: true });
+    else this.renderSidebar(this.index);
+    toast(t('page.resetDone'), { type: 'ok', timeout: 1800 });
+  }
+
+  /* One widget starts over (the ↺ in quiz / cloze / parsons / flashcard headers). */
+  async resetProgress(kind, id) {
+    const pp = this.progress.pages[this.src];
+    if (pp?.[kind]) delete pp[kind][id];
+    this.saveProgress();
+    await this.showPage(this.index, { quiet: true });
+  }
+
+  async deletePage(src) {
+    const title = this.pageTitle(src);
+    if (!(await confirm({ title: t('page.deleteQ', { title }), message: t('page.deleteBody'), ok: t('delete'), danger: true }))) return;
+    try {
+      await window.vla.course.deletePage(this.courseId, src);
+    } catch (e) { toast(e.message, { type: 'err' }); return; }
+    const current = src === this.src;
+    const at = this.index;
+    this.data = await getCourse(this.courseId, { force: true });
+    this.course = this.data.course;
+    this.progress = this.data.progress;
+    this.progress.pages ||= {};
+    this.store.replace(this.data.annotations, this.data.state);
+    this.pageTexts.delete(src);
+    const ch = this.findChapter(this.chapter.id);
+    toast(t('page.deleted', { title }), { type: 'ok' });
+    if (!ch || !ch.pages.length) { go(`/course/${this.courseId}`); return; }
+    this.chapter = ch;
+    if (current) await this.showPage(Math.min(at, ch.pages.length - 1));
+    else { this.index = ch.pages.findIndex(p => p.src === this.src); this.renderSidebar(this.index); this.renderBars(this.rendered?.fm || {}); }
+  }
+
+  /* "Mark this control for the AI": an ask highlight on a whole block. */
+  markBlock(el, kind = 'ask') {
+    const block = el?.closest?.('[data-block]');
+    if (!block) return null;
+    let detail;
+    try { detail = block._vhDetail?.(); } catch { detail = undefined; }
+    const info = this.rendered?.blocks.get(block.dataset.block);
+    const hl = this.store.add({ kind, page: this.src, targets: [{ type: 'block', block: block.dataset.block, widget: block.dataset.widget, label: (info?.label || '').slice(0, 120) || undefined, detail: detail || undefined }] });
+    this.openNotes(hl.id, { edit: true });
+    return hl;
+  }
+
+  /* ─── live reload: files changed outside the app (AI, MCP, editors) ─── */
+
+  async onFsChange({ id, paths }) {
+    if (id !== this.courseId || this.destroyed) return;
+    const courseChanged = paths.includes('course.json');
+    const notesChanged = paths.includes('annotations.json');
+    const touched = new Set(paths.filter(p => /\.vitent(\/|$)/i.test(p)).map(p => p.replace(/(\.vitent)(\/.*)?$/i, '$1')));
+    if (paths.some(p => p.startsWith('learner/workspaces/'))) bus.emit('ws:files', { courseId: id, paths });
+    if (courseChanged || touched.size || notesChanged) {
+      this.data = await getCourse(this.courseId, { force: true });
+      if (this.destroyed) return;
+      this.course = this.data.course;
+      if (notesChanged) this.store.replace(this.data.annotations, this.data.state);
+      for (const src of touched) this.pageTexts.delete(src);
+    }
+    if (courseChanged) {
+      const ch = this.findChapter(this.chapter.id) || this.flatChapters()[0];
+      if (!ch) { go(`/course/${this.courseId}`); return; }
+      this.chapter = ch;
+      this.sideTitle.textContent = tl(ch.title);
+      const i = ch.pages.findIndex(p => p.src === this.src);
+      if (i < 0) { await this.showPage(Math.min(this.index, ch.pages.length - 1)); return; }
+      this.index = i;
+    }
+    if (touched.has(this.src)) {
+      if (this.edit) {
+        toast(t('live.pageChangedEditing'), { iconName: 'sparkles', timeout: 8000 });
+      } else {
+        await this.showPage(this.index, { quiet: true });
+        this.rendered?.el.classList.add('is-updated');
+        setTimeout(() => this.rendered?.el.classList.remove('is-updated'), 1400);
+      }
+    } else if (courseChanged || touched.size) {
+      this.renderSidebar(this.index);
+      this.renderBars(this.rendered?.fm || {});
+    }
   }
 
   /* ─── actions / AI / navigation ─── */
@@ -426,6 +593,8 @@ class LessonView {
       case 'help': go('/help'); break;
       case 'complete': this.markComplete(); break;
       case 'reload': this.reload(); break;
+      case 'ai': toggleChat(); break;
+      case 'ai-edit': openChat({ edit: true }); break;
       default: toast(t('action.badUi', { cmd }), { type: 'err' });
     }
   }
@@ -496,6 +665,7 @@ class LessonView {
 
   async toggleEdit() {
     if (this.edit) { await this.edit.exit(); return; }
+    if (state.settings?.editor?.source !== true) { await this.inlineEdit(); return; }
     this.highlighter?.exit();
     const page = this.chapter.pages[this.index];
     const text = await this.pageText(page.src);
@@ -512,6 +682,30 @@ class LessonView {
     await this.edit.mount();
   }
 
+  /* Typora-style: edit the text of the rendered page in place; widgets stay locked.
+     The source editor above is behind Settings → Source editing. */
+  async inlineEdit() {
+    const r = this.rendered;
+    const page = this.chapter.pages[this.index];
+    if (!r) return;
+    const text = await this.pageText(page.src);
+    if (this.edit || this.rendered !== r) return;
+    this.highlighter?.exit();
+    this.highlighter?.clearPaint();
+    this.highlighter?.destroy();
+    this.highlighter = null;
+    closeAsk();
+    this.edit = new InlineEditor({
+      article: r.el,
+      host: this.readerWrap,
+      text,
+      onSave: async txt => { await window.vla.course.savePage(this.courseId, page.src, txt); this.pageTexts.set(page.src, txt); },
+      onExit: () => { const ed = this.edit; this.edit = null; ed?.destroy(); this.showPage(this.index); },
+    });
+    this.edit.enable();
+    this.renderBars(r.fm || {});
+  }
+
   onKey(e) {
     if (e.defaultPrevented) return;
     const tag = (e.target.tagName || '').toLowerCase();
@@ -525,7 +719,14 @@ class LessonView {
   }
 
   destroy() {
+    this.destroyed = true;
     document.removeEventListener('keydown', this.onKey);
+    document.removeEventListener('selectionchange', this.onSel);
+    this.ro.disconnect();
+    this.offFs?.();
+    this.offChat?.();
+    this.offCtx?.();
+    window.vla.course.watch(null);
     clearTimeout(this.completeTimer);
     closeAsk();
     this.saveProgress.flush?.();

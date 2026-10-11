@@ -94,8 +94,12 @@ function createContext(page, fm) {
       return sanitize(md().renderInline(String(text ?? ''), { references: rctx.env.references }));
     },
 
-    md(text) {
+    /* opts.line: where `text` starts in the page file. Page-level text
+       (and text inside layout containers) then carries data-sl source
+       maps for the in-place editor; widget-owned Markdown never does. */
+    md(text, opts = {}) {
       const env = { references: rctx.env.references, slugs: rctx.slugs, fences: [] };
+      if (opts.line != null && rctx.srcMap) Object.assign(env, { srcMap: true, line: opts.line, lineLimit: rctx.lineLimit });
       const html = sanitize(md().render(String(text ?? ''), env));
       const tpl = document.createElement('template');
       tpl.innerHTML = html;
@@ -178,19 +182,26 @@ function hydrateFragment(frag, env, rctx) {
   }
 }
 
+/* Directives whose Markdown children are plain page text (editable in place). */
+const TEXT_CONTAINERS = new Set(['callout', 'details', 'reveal', 'tabs', 'columns', 'steps']);
+
 export function renderNodes(nodes, parent, rctx) {
   for (const node of nodes) {
-    if (node.type === 'md') { parent.append(rctx.md(node.text)); continue; }
+    if (node.type === 'md') { parent.append(rctx.md(node.text, { line: node.line })); continue; }
     const def = DIRECTIVES[node.name];
     const key = WIDGETS[node.name] ? node.name : def?.alias;
     const widget = key ? WIDGETS[key] : null;
     const id = rctx.id(key || node.name, node.attrs);
+    const mapped = rctx.srcMap;
+    if (!TEXT_CONTAINERS.has(key)) rctx.srcMap = false;
     let el;
     try {
       el = widget ? widget.render(node, rctx, id) : unknownBox(node, rctx);
     } catch (e) {
       console.error(e);
       el = h('div.vx-error', `:::${node.name} — ${e.message}`);
+    } finally {
+      rctx.srcMap = mapped;
     }
     if (!el) continue;
     if (widget?.markable === false) {
@@ -208,10 +219,27 @@ function unknownBox(node, rctx) {
   return box;
 }
 
+/* Inline Markdown → hydrated fragment, for re-rendering one edited unit. */
+function renderInlineFragment(text, rctx) {
+  const env = { references: rctx.env.references, fences: [], srcMap: true };
+  const tpl = document.createElement('template');
+  tpl.innerHTML = sanitize(md().renderInline(String(text ?? ''), env));
+  hydrateFragment(tpl.content, env, rctx);
+  return tpl.content;
+}
+
+/* Lines after the first ::include no longer match the file. */
+function includeLimit(text) {
+  const i = String(text ?? '').split(/\r?\n/).findIndex(l => INCLUDE_RE.test(l));
+  return i < 0 ? Infinity : i;
+}
+
 export async function renderPage(page) {
   const text = await resolveIncludes(String(page.text ?? ''), page);
   const { data: fm, body, offset, error } = splitFrontmatter(text);
   const rctx = createContext(page, fm);
+  rctx.srcMap = true;
+  rctx.lineLimit = text === String(page.text ?? '') ? Infinity : includeLimit(page.text);
   rctx.env.references = pageEnv(body).references;
   const article = h('article.vt-article');
   rctx.article = article;
@@ -225,6 +253,8 @@ export async function renderPage(page) {
       h('h1', fm.title || page.title)));
   }
   renderNodes(tree.children, article, rctx);
+  rctx.srcMap = false;
+  article.vtRenderInline = src => renderInlineFragment(src, rctx);
   return {
     el: article,
     fm,

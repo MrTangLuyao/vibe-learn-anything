@@ -10,6 +10,12 @@
  *   node tools/vla.mjs answer <dir> <highlightId> [--status S] [--text T | --file F]
  *                                                         append an "answer" comment
  *   node tools/vla.mjs info <dir|file.vla>                course outline
+ *   node tools/vla.mjs mcp [--data <dir>]                 stdio MCP server over the app's
+ *                                                         course library (see ai_manual/08-mcp.md)
+ *
+ * mcp data folder: --data, else $VLA_DATA, else the app's profile folder
+ * (%APPDATA%\Vibe Learn Anything, ~/Library/Application Support/Vibe Learn
+ * Anything, or ${XDG_CONFIG_HOME:-~/.config}/Vibe Learn Anything).
  * ============================================================ */
 
 import fs from 'node:fs';
@@ -19,9 +25,20 @@ import {
   extractVla, packVla, validateCourseDir, readJson, writeJson, normalizeCourse, allPages,
   pageMeta, normalizeAnnotations, sanitizeId, emptyAnnotations,
 } from '../src/shared/vla-core.mjs';
+import { startMcpServer } from '../src/mcp/server.mjs';
+
+const VERSION = '0.2.0';
+const APP_NAME = 'Vibe Learn Anything';
 
 const argv = process.argv.slice(2);
 const cmd = argv.shift();
+
+/* The app's profile folder (Electron userData for productName). */
+function defaultDataDir() {
+  if (process.platform === 'win32') return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), APP_NAME);
+  if (process.platform === 'darwin') return path.join(os.homedir(), 'Library', 'Application Support', APP_NAME);
+  return path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), APP_NAME);
+}
 
 function flag(name, fallback = null) {
   const i = argv.indexOf(name);
@@ -194,6 +211,15 @@ const commands = {
     writeJson(annFile, ann);
     console.log(`✓ answered ${hid} → ${h.status}`);
   },
+
+  /* stdout carries only MCP protocol messages; everything else goes to stderr. */
+  mcp() {
+    const eq = argv.find(a => a.startsWith('--data='));
+    const given = eq ? eq.slice('--data='.length) : flag('--data', null);
+    const dataDir = path.resolve(given || process.env.VLA_DATA || defaultDataDir());
+    if (!fs.existsSync(dataDir)) console.error(`! data folder does not exist yet: ${dataDir}`);
+    startMcpServer({ dataDir, version: VERSION });
+  },
 };
 
 if (!cmd || !commands[cmd]) {
@@ -205,7 +231,8 @@ if (!cmd || !commands[cmd]) {
   unpack <file.vla> <dir>              unpack (nested .vitent become folders)
   info <dir|file.vla>                  print the outline
   notes <dir|file.vla> [--all]         list open ask / revise highlights
-  answer <dir> <id> --text T|--file F [--status S]   add an "answer" comment`);
+  answer <dir> <id> --text T|--file F [--status S]   add an "answer" comment
+  mcp [--data <dir>]                   MCP server (stdio) over the app's course library`);
   process.exit(cmd ? 1 : 0);
 }
 commands[cmd]();

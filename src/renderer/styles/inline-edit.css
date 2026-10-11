@@ -1,0 +1,99 @@
+/* ============================================================
+ * In-place text editing (js/inline-edit.js).
+ * The page keeps its reading look; editable text gets a soft hover
+ * wash and an accent ring while focused. Controls stay locked.
+ * ============================================================ */
+
+/* ─── editable units ─── */
+.vt-article.is-inline-editing [data-ie-unit] {
+  border-radius: var(--r-sm);
+  outline: none;
+  caret-color: var(--accent);
+  cursor: text;
+  min-height: 1.4em;
+  transition: background-color .15s ease, box-shadow .15s ease;
+}
+.vt-article.is-inline-editing [data-ie-unit]:hover {
+  background: var(--hover);
+  box-shadow: 0 0 0 4px var(--hover);
+}
+.vt-article.is-inline-editing [data-ie-unit]:focus {
+  background: rgb(var(--accent-rgb) / .06);
+  box-shadow: 0 0 0 4px rgb(var(--accent-rgb) / .06), 0 0 0 5px rgb(var(--accent-rgb) / .3);
+}
+
+/* Table cells: the table clips outer shadows, so the ring goes inside. */
+.vt-article.is-inline-editing td[data-ie-unit],
+.vt-article.is-inline-editing th[data-ie-unit] { border-radius: 0; min-height: 0; }
+.vt-article.is-inline-editing td[data-ie-unit]:hover,
+.vt-article.is-inline-editing th[data-ie-unit]:hover { box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / .25); }
+.vt-article.is-inline-editing td[data-ie-unit]:focus,
+.vt-article.is-inline-editing th[data-ie-unit]:focus {
+  background: rgb(var(--accent-rgb) / .07);
+  box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / .45);
+}
+
+/* Empty (new) paragraph placeholder. */
+.vt-article.is-inline-editing [data-ie-unit].is-empty:not(:has(> .task-box))::before {
+  content: attr(data-ph);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--faint);
+}
+
+/* ─── locked pieces ─── */
+.vt-article.is-inline-editing [data-ie-atom] { cursor: default; }
+.vt-article.is-inline-editing [data-ie-unit] [data-ie-atom]:hover,
+.vt-article.is-inline-editing [data-ie-atom].ie-locked-hover {
+  outline: 1px dashed rgb(var(--outline-rgb) / .9);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.vt-article.is-inline-editing .ie-locked-hover:not([data-ie-atom]) {
+  outline: 1px dashed rgb(var(--outline-rgb) / .75);
+  outline-offset: 4px;
+}
+.vt-article.is-inline-editing [data-ie-locked] { cursor: not-allowed; }
+
+.ie-lock-hint {
+  position: fixed; z-index: 10150; pointer-events: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  max-width: min(440px, 86vw); padding: 4px 11px 4px 9px;
+  border-radius: var(--r-full); border: 1px solid var(--border);
+  background: var(--surface-top); color: var(--muted); box-shadow: var(--shadow-2);
+  font-size: 11.5px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  animation: fade-in .14s ease-out;
+}
+.ie-lock-hint svg { flex: none; color: var(--faint); }
+
+/* ─── floating status pill ─── */
+.ie-bar {
+  position: absolute; top: 12px; right: 18px; z-index: 40;
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 5px 5px 8px;
+  border-radius: var(--r-full); border: 1px solid var(--border);
+  background: var(--surface); box-shadow: var(--shadow-3);
+  font-size: 12px; color: var(--muted);
+  animation: rise-in .2s var(--ease);
+}
+.ie-bar .ie-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent-dim); color: var(--accent);
+}
+.ie-bar .ie-label { color: var(--text); font-weight: 600; white-space: nowrap; }
+.ie-bar .ie-sep { width: 1px; height: 16px; background: var(--border); }
+.ie-bar .ie-state { display: inline-flex; align-items: center; gap: 5px; min-width: 66px; white-space: nowrap; }
+.ie-bar .ie-state svg { flex: none; }
+.ie-bar[data-state="saved"] .ie-state { color: var(--ok); }
+.ie-bar[data-state="saving"] .ie-state svg { animation: spin 1s linear infinite; }
+.ie-bar[data-state="error"] .ie-state { color: var(--err); }
+.ie-bar .ie-help { width: 28px; height: 28px; color: var(--faint); }
+.ie-bar .ie-help:hover { color: var(--text); }
+.ie-bar .ie-done { border-radius: var(--r-full); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ie-bar, .ie-lock-hint { animation: none; }
+  .vt-article.is-inline-editing [data-ie-unit] { transition: none; }
+}

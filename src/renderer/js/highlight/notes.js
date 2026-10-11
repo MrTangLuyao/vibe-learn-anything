@@ -259,7 +259,7 @@ export class NotesPanel {
       const job = await askAI({
         messages: askMessages({ course: this.course, pageTitle: this.pageTitle?.(hl.page) || hl.page, pageText: await this.pageText?.(hl.page), highlight: hl, question }),
         courseId: this.courseId,
-        onDelta: d => { acc += d; text.innerHTML = renderHtml(acc); el.scrollIntoView({ block: 'nearest' }); },
+        onText: full => { acc = full; text.innerHTML = renderHtml(acc); el.scrollIntoView({ block: 'nearest' }); },
       });
       const r = await job.promise;
       const final = (r?.text || acc).trim();

@@ -195,7 +195,8 @@
   margin: 0 0 1.5em; display: flex; flex-direction: column; height: var(--ws-h, 560px);
   border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; background: var(--bg);
 }
-.vx-ws.is-max { position: fixed; inset: 10px; z-index: 900; height: auto; box-shadow: var(--shadow-3); margin: 0; }
+/* Maximized: fills the window below the title bar, so the window controls never cover it. */
+.vx-ws.is-max { position: fixed; inset: var(--appbar-h) var(--chat-space, 0px) 0 0; z-index: 900; height: auto; margin: 0; border: none; border-radius: 0; }
 .ws-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface); }
 .ws-head .ws-title { font-weight: 700; font-size: 14px; flex: 1; min-width: 0; }
 .ws-head .ws-title small { font-weight: 500; color: var(--faint); margin-left: 8px; font-size: 12px; }
@@ -358,3 +359,50 @@
 .vx-toc a[data-level="3"] { padding-left: 16px; font-size: 13px; }
 .vx-toc a[data-level="4"] { padding-left: 32px; font-size: 13px; }
 .vx-divider { height: 1px; background: var(--border); margin: 2em 0; }
+
+/* ─── :::fullscreen — one element filling the reading area ─── */
+.vx-fullscreen {
+  display: flex; flex-direction: column; margin: 0 0 1.5em;
+  height: max(360px, calc(var(--reader-h, 80vh) - 64px));
+}
+.vx-fullscreen > * { flex: 1 1 auto; min-height: 0; margin: 0 !important; }
+.vx-fullscreen > .vx-ws { height: auto; }
+.vx-fullscreen > .vx-pdf, .vx-fullscreen > .vx-embed, .vx-fullscreen > .vx-terminal,
+.vx-fullscreen > .vx-slides, .vx-fullscreen > .vx-media, .vx-fullscreen > .vx-figure { display: flex; flex-direction: column; }
+.vx-fullscreen > .vx-pdf .pdf-scroll { flex: 1; height: auto; }
+.vx-fullscreen > .vx-embed iframe { flex: 1; height: auto; }
+.vx-fullscreen > .vx-terminal .term-host, .vx-fullscreen > .vx-terminal .term-start { flex: 1; height: auto; min-height: 0; }
+.vx-fullscreen > .vx-slides .slides-stage { flex: 1; aspect-ratio: auto; }
+.vx-fullscreen > .vx-slides .slide { font-size: clamp(16px, 1.6vw, 28px); }
+.vx-fullscreen > .vx-media video, .vx-fullscreen > .vx-media iframe.embed-video { flex: 1; min-height: 0; height: auto; aspect-ratio: auto; object-fit: contain; }
+.vx-fullscreen > .vx-figure img, .vx-fullscreen > p > img { max-height: 100%; object-fit: contain; }
+.vx-fullscreen > p, .vx-fullscreen > .vt-code, .vx-fullscreen > .vx-box, .vx-fullscreen > .vx-callout { overflow: auto; }
+.vx-fullscreen > .vx-mermaid, .vx-fullscreen > .vt-mermaid { overflow: auto; }
+
+/* A page that is only a :::fullscreen block: the block is the page. */
+.reader.is-fill { overflow: hidden; }
+.reader.is-fill .reader-inner { max-width: none; height: 100%; padding: 0; }
+.reader.is-fill .vt-article { height: 100%; }
+.reader.is-fill .vt-header, .reader.is-fill .page-end { display: none; }
+.reader.is-fill .vx-fullscreen { height: 100%; margin: 0; }
+.reader.is-fill .vx-fullscreen > * { border-radius: 0; border: none; }
+.reader.is-fill .vx-fullscreen > .vx-ws:not(.is-max) { border: none; }
+
+/* widget "start over" button in box headers */
+.vx-reset { color: var(--faint); margin: -4px -6px -4px 0; }
+.vx-reset:hover { color: var(--text); }
+
+/* Monaco renders its context menu in a shadow root that sits next to — not
+   inside — .monaco-editor, so it cannot inherit the editor's theme colors
+   and came out transparent. Give the host a Windows 11 style flyout palette. */
+.shadow-root-host {
+  --vscode-menu-background: var(--surface-high);
+  --vscode-menu-foreground: var(--text);
+  --vscode-menu-selectionBackground: rgb(var(--accent-rgb) / .24);
+  --vscode-menu-selectionForeground: var(--text);
+  --vscode-menu-selectionBorder: transparent;
+  --vscode-menu-separatorBackground: var(--border);
+  --vscode-menu-border: var(--border);
+  --vscode-widget-shadow: rgba(0, 0, 0, .36);
+  --vscode-keybindingLabel-foreground: var(--muted);
+}

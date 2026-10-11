@@ -22,6 +22,7 @@
 5. [`05-annotations.md`](ai_manual/05-annotations.md) — 高亮、注释（learner / answer）、学习进度，AI 处理流程
 6. [`06-code-and-runtimes.md`](ai_manual/06-code-and-runtimes.md) — 代码运行器、测试、终端、环境要求
 7. [`07-components.md`](ai_manual/07-components.md) — 软件内置的开源组件与自定义 HTML 组件接口
+8. [`08-mcp.md`](ai_manual/08-mcp.md) — MCP 服务器：通过 MCP 客户端直接读取、实时修改学习者软件里的课程
 
 ## 工具
 

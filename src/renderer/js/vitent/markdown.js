@@ -5,6 +5,7 @@
  *   • task lists         - [ ] / - [x]
  *   • fences             become placeholders hydrated by render.js
  *   • headings           get stable slug ids
+ *   • source maps        (env.srcMap) for in-place editing, see below
  * ============================================================ */
 
 import MarkdownIt from 'markdown-it';
@@ -34,6 +35,7 @@ function mathInline(state, silent) {
     if (!silent) {
       const tok = state.push('math_block_inline', 'math', 0);
       tok.content = src.slice(pos + 2, end);
+      tok.meta = { src: src.slice(pos, end + 2) };
     }
     state.pos = end + 2;
     return true;
@@ -52,6 +54,7 @@ function mathInline(state, silent) {
   if (!silent) {
     const tok = state.push('math_inline', 'math', 0);
     tok.content = src.slice(start, end);
+    tok.meta = { src: src.slice(pos, end + 1) };
   }
   state.pos = end + 1;
   return true;
@@ -99,7 +102,7 @@ function inlineDirective(state, silent) {
   if (!d || d.label == null || !isKind(d.name, 'inline')) return false;
   if (!silent) {
     const tok = state.push('vt_inline', 'span', 0);
-    tok.meta = d;
+    tok.meta = { ...d, src: src.slice(pos, d.end) };
   }
   state.pos = d.end;
   return true;
@@ -109,21 +112,175 @@ function attrsJson(attrs) {
   return escapeHtml(JSON.stringify(attrs || {}));
 }
 
+/* ` data-md="…"` — the exact source of an inline atom, only when mapping. */
+function mdAttr(env, src) {
+  return env?.srcMap && src != null ? ` data-md="${escapeHtml(src)}"` : '';
+}
+
 function renderInlineDirective(md, d, env) {
   const label = md.renderInline(d.label || '', env);
   const a = d.attrs || {};
+  const m = mdAttr(env, d.src);
   switch (d.name) {
-    case 'kbd': return `<kbd>${label}</kbd>`;
-    case 'badge': return `<span class="vt-badge" data-color="${escapeHtml(a.color || '')}">${label}</span>`;
-    case 'hl': return `<span class="vt-hl" data-color="${escapeHtml(a.color || 'yellow')}">${label}</span>`;
-    case 'term': return `<span class="vt-term" data-tip="${escapeHtml(a.tip || '')}">${label}</span>`;
-    case 'icon': return `<span class="vt-icon" data-vt-inline="icon" data-attrs="${attrsJson({ name: d.label, ...a })}"></span>`;
-    case 'btn': return `<button class="inline-btn" data-vt-inline="btn" data-attrs="${attrsJson(a)}"><span>${label}</span></button>`;
-    case 'ask': return `<button class="ask-chip" data-vt-inline="ask" data-attrs="${attrsJson(a)}"><span>${label}</span></button>`;
-    case 'file': return `<button class="inline-file" data-vt-inline="file" data-attrs="${attrsJson(a)}"><span>${label}</span></button>`;
-    case 'link': return `<a class="vt-link-page" href="#" data-vt-inline="link" data-attrs="${attrsJson(a)}">${label}</a>`;
-    default: return label;
+    case 'kbd': return `<kbd${m}>${label}</kbd>`;
+    case 'badge': return `<span class="vt-badge" data-color="${escapeHtml(a.color || '')}"${m}>${label}</span>`;
+    case 'hl': return `<span class="vt-hl" data-color="${escapeHtml(a.color || 'yellow')}"${m}>${label}</span>`;
+    case 'term': return `<span class="vt-term" data-tip="${escapeHtml(a.tip || '')}"${m}>${label}</span>`;
+    case 'icon': return `<span class="vt-icon" data-vt-inline="icon" data-attrs="${attrsJson({ name: d.label, ...a })}"${m}></span>`;
+    case 'btn': return `<button class="inline-btn" data-vt-inline="btn" data-attrs="${attrsJson(a)}"${m}><span>${label}</span></button>`;
+    case 'ask': return `<button class="ask-chip" data-vt-inline="ask" data-attrs="${attrsJson(a)}"${m}><span>${label}</span></button>`;
+    case 'file': return `<button class="inline-file" data-vt-inline="file" data-attrs="${attrsJson(a)}"${m}><span>${label}</span></button>`;
+    case 'link': return `<a class="vt-link-page" href="#" data-vt-inline="link" data-attrs="${attrsJson(a)}"${m}>${label}</a>`;
+    default: return m ? `<span${m}>${label}</span>` : label;
   }
+}
+
+/* ─── source maps (env.srcMap) ───
+ * Used by the in-place editor (inline-edit.js). Without env.srcMap the
+ * output is exactly what it always was.
+ *   • env.line (chunk start line in the page file) → data-sl="start-end"
+ *     (0-based, end exclusive) on paragraphs, headings, list items, lists,
+ *     table rows, blockquotes and rules. Tight-list paragraphs render as
+ *     <p class="tight"> so every list item's text is addressable.
+ *   • inline atoms (math, inline directives, images, raw HTML) carry their
+ *     exact source in data-md; links carry data-md / data-ml (label source)
+ *     / data-mt (the part after the label); escapes and entities become
+ *     <span class="vt-esc" data-md="\*">*</span>.
+ *   • a paragraph whose raw HTML cannot be kept as one atom gets data-ie-lock. */
+
+const SL_TYPES = new Set(['paragraph_open', 'heading_open', 'list_item_open', 'bullet_list_open', 'ordered_list_open', 'tr_open', 'blockquote_open', 'hr']);
+
+function sourceMap(state) {
+  const env = state.env;
+  if (!env?.srcMap || env.line == null) return;
+  const base = Number(env.line);
+  const limit = env.lineLimit ?? Infinity;
+  const tokens = state.tokens;
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
+    if (!tok.map || !SL_TYPES.has(tok.type)) continue;
+    const s = base + tok.map[0];
+    const e = base + tok.map[1];
+    if (e > limit) continue;
+    tok.attrSet('data-sl', `${s}-${e}`);
+    if (tok.type === 'paragraph_open' && tok.hidden && tokens[i + 2]?.type === 'paragraph_close') {
+      tok.attrJoin('class', 'tight');
+      tok.meta = { ...(tok.meta || {}), tight: true };
+      tokens[i + 2].meta = { ...(tokens[i + 2].meta || {}), tight: true };
+    }
+  }
+}
+
+/* Wrap an inline rule so the token it produces learns its source span. */
+function tracked(fn, types, onToken) {
+  return (state, silent) => {
+    if (silent || !state.env?.srcMap) return fn(state, silent);
+    const start = state.pos;
+    const n = state.tokens.length;
+    const ok = fn(state, silent);
+    if (ok) {
+      for (let i = n; i < state.tokens.length; i++) {
+        const tok = state.tokens[i];
+        if (types.includes(tok.type)) { onToken(tok, start, state.pos, state); break; }
+      }
+    }
+    return ok;
+  };
+}
+
+function ruleFn(ruler, name) {
+  return ruler.__rules__.find(r => r.name === name)?.fn;
+}
+
+function trackInline(m) {
+  const wrap = (name, types, onToken) => {
+    const fn = ruleFn(m.inline.ruler, name);
+    if (fn) m.inline.ruler.at(name, tracked(fn, types, onToken));
+  };
+  wrap('image', ['image'], (tok, s, e, state) => tok.attrSet('data-md', state.src.slice(s, e)));
+  wrap('html_inline', ['html_inline'], (tok, s, e) => { tok.meta = { ...(tok.meta || {}), pos: [s, e] }; });
+  wrap('autolink', ['link_open'], (tok, s, e, state) => {
+    tok.attrSet('data-md', state.src.slice(s, e));
+    tok.attrSet('data-ml', state.src.slice(s + 1, e - 1));
+  });
+  wrap('link', ['link_open'], (tok, s, e, state) => {
+    const src = state.src;
+    tok.attrSet('data-md', src.slice(s, e));
+    const keep = state.pos;
+    let labelEnd = -1;
+    try { labelEnd = state.md.helpers.parseLinkLabel(state, s, true); } catch { labelEnd = -1; }
+    state.pos = keep;
+    if (labelEnd > s) {
+      tok.attrSet('data-ml', src.slice(s + 1, labelEnd));
+      tok.attrSet('data-mt', src.slice(labelEnd + 1, e));
+    }
+  });
+}
+
+const VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
+const OPEN_TAG = /^<([A-Za-z][\w-]*)/;
+const CLOSE_TAG = /^<\/([A-Za-z][\w-]*)/;
+
+/* Group <tag>…</tag> raw HTML into one atom; escapes/entities keep their source. */
+function inlineAtoms(state) {
+  if (!state.env?.srcMap) return;
+  const blocks = state.tokens;
+  for (let b = 0; b < blocks.length; b++) {
+    const inline = blocks[b];
+    if (inline.type !== 'inline' || !inline.children) continue;
+    const ch = inline.children;
+    let lock = false;
+    for (let i = 0; i < ch.length; i++) {
+      const tok = ch[i];
+      if (tok.type === 'text_special') {
+        const v = new state.Token('vt_verbatim', '', 0);
+        v.content = tok.content;
+        v.markup = tok.markup;
+        ch[i] = v;
+        continue;
+      }
+      if (tok.type === 'link_open' && tok.markup === 'linkify') { tok.attrSet('data-mb', ''); continue; }
+      if (tok.type !== 'html_inline' || !tok.meta?.pos) continue;
+      const c = tok.content;
+      const open = OPEN_TAG.exec(c);
+      let j = i;
+      if (open && !/\/\s*>$/.test(c) && !VOID_TAGS.has(open[1].toLowerCase())) {
+        const name = open[1].toLowerCase();
+        let depth = 0;
+        j = -1;
+        for (let k = i; k < ch.length; k++) {
+          const u = ch[k];
+          if (u.type !== 'html_inline') continue;
+          const o = OPEN_TAG.exec(u.content);
+          const cl = CLOSE_TAG.exec(u.content);
+          if (o && o[1].toLowerCase() === name && !/\/\s*>$/.test(u.content)) depth++;
+          else if (cl && cl[1].toLowerCase() === name && --depth === 0) { j = k; break; }
+        }
+      } else if (CLOSE_TAG.test(c)) j = -1;
+      if (j < 0 || !ch[j].meta?.pos) { lock = true; continue; }
+      let level = 0;
+      let balanced = true;
+      for (let k = i; k <= j; k++) {
+        level += ch[k].nesting;
+        if (level < 0) balanced = false;
+      }
+      if (!balanced || level !== 0) { lock = true; continue; }
+      const atom = new state.Token('vt_html', 'span', 0);
+      atom.content = inline.content.slice(tok.meta.pos[0], ch[j].meta.pos[1]);
+      atom.children = ch.slice(i, j + 1);
+      ch.splice(i, j - i + 1, atom);
+    }
+    if (lock && blocks[b - 1]) blocks[b - 1].attrSet('data-ie-lock', '');
+  }
+}
+
+function slugText(children) {
+  let s = '';
+  for (const c of children || []) {
+    if (c.type === 'text' || c.type === 'code_inline' || c.type === 'vt_verbatim' || c.type === 'text_special') s += c.content;
+    else if (c.type === 'vt_html') s += slugText(c.children);
+  }
+  return s;
 }
 
 /* ─── task lists ─── */
@@ -139,7 +296,7 @@ function taskLists(state) {
     if (first.type !== 'text' || !first.content.startsWith(m[0].slice(0, 3))) continue;
     first.content = first.content.replace(/^\[[ xX]\]\s*/, '');
     const box = new state.Token('html_inline', '', 0);
-    box.content = `<input type="checkbox" disabled${m[1] !== ' ' ? ' checked' : ''}> `;
+    box.content = `<input class="task-box" type="checkbox" disabled${m[1] !== ' ' ? ' checked' : ''}> `;
     tok.children.unshift(box);
     tokens[i - 2].attrJoin('class', 'task-list-item');
     for (let j = i - 3; j >= 0; j--) {
@@ -159,9 +316,16 @@ export function md() {
   m.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
   m.inline.ruler.before('emphasis', 'vt_inline', inlineDirective);
   m.core.ruler.after('inline', 'task_lists', taskLists);
+  m.core.ruler.after('block', 'vt_source_map', sourceMap);
+  m.core.ruler.before('text_join', 'vt_inline_atoms', inlineAtoms);
+  trackInline(m);
 
-  m.renderer.rules.math_inline = (tokens, idx) => `<span class="vt-math" data-vh-skip>${renderMath(tokens[idx].content, false)}</span>`;
-  m.renderer.rules.math_block_inline = (tokens, idx) => `<span class="vt-math" data-vh-skip>${renderMath(tokens[idx].content, true)}</span>`;
+  m.renderer.rules.math_inline = (tokens, idx, _o, env) => `<span class="vt-math" data-vh-skip${mdAttr(env, tokens[idx].meta?.src)}>${renderMath(tokens[idx].content, false)}</span>`;
+  m.renderer.rules.math_block_inline = (tokens, idx, _o, env) => `<span class="vt-math" data-vh-skip${mdAttr(env, tokens[idx].meta?.src)}>${renderMath(tokens[idx].content, true)}</span>`;
+  m.renderer.rules.vt_verbatim = (tokens, idx) => `<span class="vt-esc" data-md="${escapeHtml(tokens[idx].markup)}">${escapeHtml(tokens[idx].content)}</span>`;
+  m.renderer.rules.vt_html = (tokens, idx, opts, env, self) => `<span class="vt-raw" data-md="${escapeHtml(tokens[idx].content)}">${self.renderInline(tokens[idx].children, opts, env)}</span>`;
+  m.renderer.rules.paragraph_open = (tokens, idx, opts, _env, self) => (tokens[idx].meta?.tight ? `<p${self.renderAttrs(tokens[idx])}>` : self.renderToken(tokens, idx, opts));
+  m.renderer.rules.paragraph_close = (tokens, idx, opts, _env, self) => (tokens[idx].meta?.tight ? '</p>' : self.renderToken(tokens, idx, opts));
   m.renderer.rules.math_block = (tokens, idx) => `<div class="vt-math-block" data-vh-skip>${renderMath(tokens[idx].content, true)}</div>\n`;
   m.renderer.rules.vt_inline = (tokens, idx, _opts, env) => renderInlineDirective(m, tokens[idx].meta, env);
 
@@ -179,7 +343,7 @@ export function md() {
   };
   m.renderer.rules.heading_open = (tokens, idx, opts, env, self) => {
     const inline = tokens[idx + 1];
-    const text = inline?.children?.filter(c => c.type === 'text' || c.type === 'code_inline').map(c => c.content).join('') || inline?.content || '';
+    const text = slugText(inline?.children) || inline?.content || '';
     env.slugs = env.slugs || {};
     let slug = slugify(text);
     if (env.slugs[slug] != null) slug = `${slug}-${++env.slugs[slug]}`;

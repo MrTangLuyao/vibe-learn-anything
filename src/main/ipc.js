@@ -15,6 +15,9 @@ import * as library from './library.js';
 import * as exec from './exec.js';
 import * as ai from './ai.js';
 import * as kit from './kit.js';
+import * as claude from './claude.js';
+import * as snapshot from './snapshot.js';
+import { watchCourse, unwatch } from './watch.js';
 import { safeJoin, normRel, readJson } from '../shared/vla-core.mjs';
 import { runnerFor } from '../shared/runners.mjs';
 
@@ -79,6 +82,18 @@ function templateCtx(spec, dir) {
   };
 }
 
+/* <profile>/live.json — what the learner is looking at, for the MCP server. */
+let liveTimer = null;
+let liveData = null;
+function writeLive(ctx) {
+  const { now, ...rest } = ctx || {};
+  liveData = { ...rest, updatedAt: new Date().toISOString() };
+  clearTimeout(liveTimer);
+  const write = () => { try { fs.writeFileSync(path.join(P.data, 'live.json'), JSON.stringify(liveData, null, 2)); } catch { /* best effort */ } };
+  if (now) write();
+  else liveTimer = setTimeout(write, 150);
+}
+
 function handle(channel, fn) {
   ipcMain.handle(channel, async (event, ...args) => fn(event, ...args));
 }
@@ -119,6 +134,7 @@ export function registerIpc() {
     const s = settings.update(patch);
     exec.clearCaches();
     if (before !== settings.get('workDir')) kit.stop();
+    if (patch?.ai?.claude && 'path' in patch.ai.claude) claude.status({ fresh: true }).catch(() => {});
     return s;
   });
   handle('settings:trusted', () => Object.keys(settings.load().trust));
@@ -183,6 +199,9 @@ export function registerIpc() {
   handle('course:saveState', (_e, id, state) => { library.saveState(id, state); return true; });
   handle('course:openFile', (_e, id, rel) => shell.openPath(library.absPath(id, rel)));
   handle('course:revealFile', (_e, id, rel) => { shell.showItemInFolder(library.absPath(id, rel)); return true; });
+  handle('course:deletePage', (_e, id, src) => library.deletePage(id, src));
+  handle('course:watch', (event, id) => (id ? watchCourse(event.sender, id, library.dirOf(id)) : (unwatch(event.sender), false)));
+  handle('course:dir', (_e, id) => library.dirOf(id));
   handle('course:saveFileAs', async (event, id, rel) => {
     const src = library.absPath(id, rel);
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -245,7 +264,11 @@ export function registerIpc() {
   handle('pty:start', async (event, spec = {}) => {
     let cwd = resolveCwd(spec);
     let command = '';
-    if (spec.agent) {
+    if (spec.claudeLogin) {
+      command = claude.loginCommand();
+      if (!command) return { error: zh() ? '没有找到 Claude Code' : 'Claude Code was not found' };
+      cwd = os.homedir();
+    } else if (spec.agent) {
       /* The learner's own AI agent, interactive, in the AI workspace or in the course folder. */
       const cfg = settings.load().ai.agent;
       const tpl = cfg.interactive || cfg.command;
@@ -287,7 +310,20 @@ export function registerIpc() {
   });
 
   /* ─── AI ─── */
-  handle('ai:status', () => ai.status());
+  handle('ai:status', (_e, opts) => ai.fullStatus(opts || {}));
+  handle('ai:claude', (event, req = {}) => {
+    const cwd = req.courseId ? library.dirOf(req.courseId) : kit.prepare();
+    const addDirs = [kit.prepare()];
+    /* Resolve with { error, code } instead of rejecting: IPC drops custom error fields. */
+    return claude.run(event.sender, { ...req, cwd, addDirs }).catch(e => ({ error: e.message, code: e.code || 'CLAUDE' }));
+  });
+  handle('ai:snapshot', (_e, id) => snapshot.take(library.dirOf(id)));
+  handle('ai:snapshotDiff', (_e, snap) => snapshot.diff(snap));
+  handle('ai:snapshotRestore', (_e, snap) => snapshot.restore(snap));
+  handle('ai:live', (_e, ctx) => { writeLive(ctx); return true; });
+  handle('mcp:status', () => claude.mcpStatus());
+  handle('mcp:install', (_e, target) => (target === 'desktop' ? claude.mcpInstallDesktop() : claude.mcpInstallCode()));
+  handle('mcp:remove', (_e, target) => (target === 'desktop' ? claude.mcpRemoveDesktop() : claude.mcpRemoveCode()));
   handle('ai:chat', (event, req) => ai.chat(event.sender, req));
   handle('ai:agent', (event, req) => {
     const cwd = req.courseId ? library.dirOf(req.courseId) : kit.workDir();

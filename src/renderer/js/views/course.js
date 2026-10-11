@@ -14,6 +14,7 @@ import { renderHtml } from '../vitent/markdown.js';
 import { exportCourse, exportForAI, removeCourse } from '../library-actions.js';
 import { processWithAgent } from '../agent-run.js';
 import { openCourseNotes } from '../highlight/notes-dialog.js';
+import { setContextProvider } from '../ai-context.js';
 
 export function chapterStatus(ch, progress) {
   const pages = ch.pages.map(p => progress.pages?.[p.src] || {});
@@ -145,5 +146,8 @@ export async function mount(el, params) {
 
   const off = bus.on('course:changed', ({ id }) => { if (id === params.id) render(true); });
   await render(true);
-  return { unmount() { off(); } };
+  /* The AI panel knows which course is open (and keeps one conversation per course). */
+  const course = (await getCourse(params.id)).course;
+  const offCtx = setContextProvider(() => ({ view: 'course', courseId: params.id, courseTitle: tl(course.title), courseCode: course.code || '' }));
+  return { unmount() { off(); offCtx(); } };
 }

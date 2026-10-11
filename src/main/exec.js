@@ -87,10 +87,21 @@ export function ensureShims() {
   }
 }
 
+/* Started from inside an AI agent's session (e.g. its terminal)? Then the
+   environment carries that session's identity; child agents must not
+   inherit it or they would think they are nested in it. */
+function dropHostSession(env) {
+  if (!env.CLAUDECODE && !env.CLAUDE_CODE_HOST_SESSION_ID && !env.CLAUDE_CODE_ENTRYPOINT) return;
+  for (const k of Object.keys(env)) {
+    if (/^(CLAUDECODE$|CLAUDE_CODE_|CLAUDE_AGENT_SDK_|CLAUDE_PID$|CLAUDE_PREVIEW_|MCP_CONNECTION_|MCP_SERVER_CONNECTION_)/.test(k) || k === 'ANTHROPIC_BASE_URL') delete env[k];
+  }
+}
+
 export function buildEnv(extra = {}) {
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.ELECTRON_NO_ATTACH_CONSOLE;
+  dropHostSession(env);
   const key = Object.keys(env).find(k => k.toLowerCase() === 'path') || 'PATH';
   env[key] = `${P.bin}${path.delimiter}${env[key] || ''}`;
   env.PYTHONUTF8 = '1';

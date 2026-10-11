@@ -109,11 +109,13 @@ export default async ({ win, shot, step, log }) => {
     await go(win, '#/learn/vla-tour/w0-read/1');
     await win.waitForSelector('.vt-article');
     await win.click('[data-button-id="edit"]');
-    await win.waitForSelector('.editor-split .monaco-editor', { timeout: 20000 });
-    await win.waitForTimeout(1500);
+    await win.waitForSelector('.vt-article.is-inline-editing [data-ie-unit]', { timeout: 20000 });
+    await win.waitForSelector('.ie-bar');
+    log('editable units:', await win.$$eval('[data-ie-unit]', els => els.length));
+    await win.waitForTimeout(300);
     await shot('i10-edit');
-    await win.click('.es-bar .btn-primary');
-    await win.waitForSelector('.reader .vt-article');
+    await win.click('.ie-bar .ie-done');
+    await win.waitForSelector('.reader .vt-article:not(.is-inline-editing)');
   });
 
   await step('pdf text layer', async () => {

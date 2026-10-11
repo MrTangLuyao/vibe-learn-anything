@@ -91,6 +91,16 @@ Two ways to close the loop:
 
 ## Features
 
+### An AI tutor beside every page
+
+The ✦ **AI** button in the title bar (Ctrl+Shift+A) opens a chat panel that always knows where you are: the page you are reading, the text you selected and the code in your workspace ride along as removable chips. One conversation per course, with follow-ups.
+
+- **Uses your own Claude Code** — the command-line version, or the copy that ships with the Claude desktop app (Microsoft Store build included). No extra endpoint or API key; sign in once from Settings.
+- **Changes the course live**: switch on *Allow changes* and ask "add a real-life example at the end of this page" — the page re-renders while it works, and every turn has an **Undo**.
+- **AI edit** in the lesson bar, and an **AI** button in every code workspace (explain the code, hints-only debugging, change the exercise, mark it for the AI); *Ask AI* is in the editor's right-click menu too.
+- **MCP server built in** (`vibe-learn`): the AI sees the page you have open, reads and edits pages, answers your notes and validates the course. It is attached automatically, and Settings adds it to Claude Code or the Claude desktop app in one click.
+- Prefer something else? An OpenAI-compatible endpoint or any command-line agent still works for answers.
+
 ### Highlight anything, ask the AI
 
 Select text and pick a highlighter: four colours for your own notes, **Ask AI** and **Ask AI to revise** for the AI. In highlight mode you can drag over many passages and mark whole controls (a quiz, a code editor, a PDF), then press ✓. Every highlight is a thread: your notes are written as `learner`, the AI's replies as `answer`; add, edit, delete, and drag the grip to reorder.
@@ -105,7 +115,7 @@ An Ed-style workspace: file tabs in the VS Code editor (Monaco), a real pseudo-t
 
 ### Practise and remember
 
-Single and multiple choice, short answers, numbers, surveys, open questions with AI feedback, fill-in-the-blanks, drag-to-order code (Parsons problems), flashcards, step-by-step reveals and slide decks. Pages complete themselves when you finish them.
+Single and multiple choice, short answers, numbers, surveys, open questions with AI feedback, fill-in-the-blanks, drag-to-order code (Parsons problems), flashcards, step-by-step reveals and slide decks. Pages with quizzes or tests complete when you pass them; others when you mark them. Right-click a page in the list to mark it done or not done, reset its progress, or delete it; ↺ on a quiz starts it over.
 
 <div align="center"><img src="docs/media/practice.gif" alt="Quizzes and fill-in-the-blanks" width="88%"></div>
 
@@ -117,7 +127,9 @@ With a command-line agent configured, **AI → Let the AI agent handle notes** r
 
 ### Edit any page in the app
 
-The text of every page is Vitent Markdown. Press ✎ for an editor with live preview and syntax checking.
+Press ✎ and type straight into the page, like Typora: paragraphs, headings, lists, tables and callouts are editable and saved as you go, while controls (quizzes, code, PDFs, slides) stay locked. Turn on *Source editing* in Settings for the split Vitent Markdown editor with live preview and syntax checking.
+
+Pages can also go **full screen**: a page made of a single `:::fullscreen` block (a code workspace, PDF, slides, a web lab…) fills the whole reading area.
 
 <div align="center"><img src="docs/media/edit.gif" alt="Editing a page with live preview" width="88%"></div>
 

@@ -276,7 +276,7 @@ function checkAction(id, a, where, add, actionIds) {
   if (a.type === 'sequence') for (const s of a.steps || []) checkAction(`${id}.step`, s, where, add, actionIds);
 }
 
-const BUILTIN_BUTTONS = new Set(['back', 'focus', 'prev', 'next', 'highlight', 'edit', 'sidebar', 'notes', 'terminal']);
+const BUILTIN_BUTTONS = new Set(['back', 'focus', 'prev', 'next', 'ai', 'highlight', 'edit', 'sidebar', 'notes', 'terminal']);
 
 /* Buttons that override an existing id (built-in or course-level) may set only the fields they change. */
 function checkButtons(buttons, where, add, actionIds, known = new Set()) {

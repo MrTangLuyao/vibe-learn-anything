@@ -93,7 +93,7 @@ explain:
 next: { type: ui, command: next }
 ```
 
-`command`：`prev` `next` `home` `course` `toggle-sidebar` `toggle-notes` `toggle-terminal` `focus` `theme` `highlight` `edit` `export` `export-ai` `settings` `help` `complete` `reload`
+`command`：`prev` `next` `home` `course` `toggle-sidebar` `toggle-notes` `toggle-terminal` `focus` `theme` `highlight` `edit` `export` `export-ai` `settings` `help` `complete` `reload` `ai`（打开 / 关闭右侧 AI 助教面板） `ai-edit`（打开 AI 助教面板，并允许它修改本页）
 
 #### `copy` — 复制文字
 
@@ -175,6 +175,7 @@ build-run:
 | `focus` | lessonbar.left | 10 | 专注模式 |
 | `prev` | lessonbar.left | 20 | 上一页 |
 | `next` | lessonbar.left | 30 | 下一页 |
+| `ai` | lessonbar.right | 70 | 「AI 修改」：打开 AI 助教面板并允许修改本页 |
 | `highlight` | lessonbar.right | 80 | 高亮模式 |
 | `edit` | lessonbar.right | 90 | 编辑本页 |
 | `sidebar` | topbar.right | 10 | 显示 / 隐藏页面列表 |

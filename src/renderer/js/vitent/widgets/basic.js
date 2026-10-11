@@ -134,3 +134,14 @@ export const divider = {
   markable: false,
   render() { return h('div.vx-divider'); },
 };
+
+/* :::fullscreen — exactly one element, sized to fill the reading area.
+   A page that is nothing but this block becomes a full-bleed "app" page. */
+export const fullscreen = {
+  markable: false,
+  render(node, rctx) {
+    const el = h('div.vx-fullscreen');
+    rctx.children(node.children, el);
+    return el;
+  },
+};
